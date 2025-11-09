@@ -4,6 +4,9 @@ import joblib
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
+from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 
 # --- Load all models dynamically ---
 models = {}
