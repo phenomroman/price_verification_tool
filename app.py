@@ -3,6 +3,7 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
+from datetime import datetime
 from catboost import CatBoostRegressor
 from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.compose import ColumnTransformer
@@ -57,7 +58,7 @@ with col2:
                                  options=["AFGHANISTAN", "ALGERIA", "ARGENTINA", "AUSTRALIA", "AUSTRIA", "BANGLADESH", "BELARUS", "BELGIUM", "BENIN", "BHUTAN", "BOSNIA AND HERZEGOVINA", "BRAZIL", "BULGARIA", "BURKINA FASO", "CAMBODIA", "CAMEROON", "CANADA", "CHAD", "CHILE", "CHINA PEOPLE'S REPUBLIC (P.R)", "CONGO", "CROATIA", "CZECH REPUBLIC", "DENMARK", "ECUADOR", "EGYPT", "ESTONIA", "FIJI", "FINLAND", "FRANCE", "GERMANY", "GREECE", "GUYANA", "HONG KONG, SAR OF CHINA", "HUNGARY", "INDIA", "INDONESIA", "IRAQ", "IRELAND", "ITALY", "JAPAN", "KOREA, REPUBLIC OF", "KUWAIT", "KYRGYZSTAN", "LATVIA", "LEBANON", "LUXEMBOURG", "MACEDONIA", "MADAGASCAR", "MALAYSIA", "MALI", "MALTA", "MEXICO", "MOROCCO", "MYANMAR", "NAURU", "NEPAL", "NETHERLANDS", "NEW ZEALAND", "NORWAY", "OMAN", "PAKISTAN", "PAPUA NEW GUINEA", "PARAGUAY", "PERU", "PHILIPPINES", "POLAND", "PORTUGAL", "QATAR", "ROMANIA", "RUSSIAN FEDERATION", "SAN MARINO", "SAUDI ARABIA", "SERBIA", "SIERRA LEONE", "SINGAPORE", "SLOVAKIA", "SLOVENIA", "SOUTH AFRICA", "SPAIN", "SRI LANKA", "SWEDEN", "SWITZERLAND", "TAIWAN", "TAJIKISTAN", "TANZANIA", "THAILAND", "TOGO", "TUNISIA", "TURKEY", "U.S.A.", "UK", "UKRAINE", "UNITED ARAB EMIRATES (UAE)", "URUGUAY", "VANUATU", "VIETNAM", "ZIMBABWE"])
     shipment_to = st.selectbox("Shipment To Port/Country", 
                                options=['EPZ', 'CHITTAGONG', 'BENAPOL', 'Burimari', 'Others', 'SHAHAJALAL INT. AIRPORT'])
-    trade_year = st.number_input("Trading Year", min_value=2022, step=1)
+    trade_year = st.number_input("Trading Year", min_value=2022, step=1, max_value=datetime.now().year-1)
     quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
     tenor = st.number_input("Tenor of Payment", min_value=0, step=1)
     freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
