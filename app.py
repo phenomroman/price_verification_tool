@@ -39,7 +39,7 @@ goods_info = {'52094200': 'FABRICS - WOVEN DENIM',
 # --- Input Fields ---
 col1, col2 = st.columns(2)
 with col1:
-    goods_code = st.selectbox("Goods Code", list(models.keys()))
+    goods_code = st.selectbox("Goods Code", list(pipelines.keys() if pipelines else models.keys()))
     exporter = st.text_input("Exporter")
     exporter_country = st.selectbox("Exporter Country", 
                                     options=["AFGHANISTAN", "ALGERIA", "ARGENTINA", "AUSTRALIA", "AUSTRIA", "BANGLADESH", "BELARUS", "BELGIUM", "BENIN", "BHUTAN", "BOSNIA AND HERZEGOVINA", "BRAZIL", "BULGARIA", "BURKINA FASO", "CAMBODIA", "CAMEROON", "CANADA", "CHAD", "CHILE", "CHINA PEOPLE'S REPUBLIC (P.R)", "CONGO", "CROATIA", "CZECH REPUBLIC", "DENMARK", "ECUADOR", "EGYPT", "ESTONIA", "FIJI", "FINLAND", "FRANCE", "GERMANY", "GREECE", "GUYANA", "HONG KONG, SAR OF CHINA", "HUNGARY", "INDIA", "INDONESIA", "IRAQ", "IRELAND", "ITALY", "JAPAN", "KOREA, REPUBLIC OF", "KUWAIT", "KYRGYZSTAN", "LATVIA", "LEBANON", "LUXEMBOURG", "MACEDONIA", "MADAGASCAR", "MALAYSIA", "MALI", "MALTA", "MEXICO", "MOROCCO", "MYANMAR", "NAURU", "NEPAL", "NETHERLANDS", "NEW ZEALAND", "NORWAY", "OMAN", "PAKISTAN", "PAPUA NEW GUINEA", "PARAGUAY", "PERU", "PHILIPPINES", "POLAND", "PORTUGAL", "QATAR", "ROMANIA", "RUSSIAN FEDERATION", "SAN MARINO", "SAUDI ARABIA", "SERBIA", "SIERRA LEONE", "SINGAPORE", "SLOVAKIA", "SLOVENIA", "SOUTH AFRICA", "SPAIN", "SRI LANKA", "SWEDEN", "SWITZERLAND", "TAIWAN", "TAJIKISTAN", "TANZANIA", "THAILAND", "TOGO", "TUNISIA", "TURKEY", "U.S.A.", "UK", "UKRAINE", "UNITED ARAB EMIRATES (UAE)", "URUGUAY", "VANUATU", "VIETNAM", "ZIMBABWE"])
@@ -79,8 +79,8 @@ if st.button("🔍 Predict Unit Price"):
     pipeline = pipelines.get(goods_code)
            
     # Predict price using model/pipeline
-    #predicted_price = model.predict(input_array.reshape(1,-1))[0]
-    predicted_price = pipeline.predict(input_df)[0]
+    predicted_price = pipeline.predict(input_df)[0] if pipeline else model.predict(input_array.reshape(1,-1))[0]
+    #predicted_price = pipeline.predict(input_df)[0]
         
     # Define a prediction range (±15% as example)
     lower_bound = predicted_price * 0.85
