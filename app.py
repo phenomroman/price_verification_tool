@@ -89,8 +89,8 @@ if st.button("🔍 Predict Unit Price"):
     st.success(f"**Predicted Unit Price:** {currency} {predicted_price:,.2f}")
     st.info(f"Expected Range: {currency} {lower_bound:,.2f} – {upper_bound:,.2f}")
 
-    st.markdown("---")
     st.write("Use this range to detect under/over invoicing against declared unit price.")
+    st.markdown("---")
     if goods_code == '58071000' or goods_code == '96061000':
         st.markdown(":red[!!! IMPORTANT !!! The prediction may not be accurate:]")
         st.write(f"Goods '{goods_code}: {goods_description}' did not have sufficient data for training.")
