@@ -26,6 +26,7 @@ st.set_page_config(page_title="Price Verification Tool 🏷️", layout="centere
 st.title("💰 Unit Price Assessment")
 st.markdown("Use this tool to assess potential under/over-invoicing based on historical import data.")
 
+today = datetime.now()
 goods_info = {'52094200': 'FABRICS - WOVEN DENIM', 
               '58071000': 'ACCESSORIES - BADGE LABEL', 
               '48211000': 'ACCESSORIES - WOVEN LABEL', 
@@ -35,7 +36,9 @@ goods_info = {'52094200': 'FABRICS - WOVEN DENIM',
               '59032010': 'FABRICS - POLY TEXTILE', 
               '39262090': 'ACCESSORIES - HANGER', 
               '62171000': 'ACCESSORIES - SCRAP FABRIC', 
-              '60063200': 'FABRICS - SYNTHETIC'}
+              '60063200': 'FABRICS - SYNTHETIC',
+              '96062200': 'ACCESSORIES - METAL BUTTON',
+              '60041000': 'FABRICS - KNITTED'}
 
 # --- Input Fields ---
 col1, col2 = st.columns(2)
@@ -58,7 +61,7 @@ with col2:
                                  options=["AFGHANISTAN", "ALGERIA", "ARGENTINA", "AUSTRALIA", "AUSTRIA", "BANGLADESH", "BELARUS", "BELGIUM", "BENIN", "BHUTAN", "BOSNIA AND HERZEGOVINA", "BRAZIL", "BULGARIA", "BURKINA FASO", "CAMBODIA", "CAMEROON", "CANADA", "CHAD", "CHILE", "CHINA PEOPLE'S REPUBLIC (P.R)", "CONGO", "CROATIA", "CZECH REPUBLIC", "DENMARK", "ECUADOR", "EGYPT", "ESTONIA", "FIJI", "FINLAND", "FRANCE", "GERMANY", "GREECE", "GUYANA", "HONG KONG, SAR OF CHINA", "HUNGARY", "INDIA", "INDONESIA", "IRAQ", "IRELAND", "ITALY", "JAPAN", "KOREA, REPUBLIC OF", "KUWAIT", "KYRGYZSTAN", "LATVIA", "LEBANON", "LUXEMBOURG", "MACEDONIA", "MADAGASCAR", "MALAYSIA", "MALI", "MALTA", "MEXICO", "MOROCCO", "MYANMAR", "NAURU", "NEPAL", "NETHERLANDS", "NEW ZEALAND", "NORWAY", "OMAN", "PAKISTAN", "PAPUA NEW GUINEA", "PARAGUAY", "PERU", "PHILIPPINES", "POLAND", "PORTUGAL", "QATAR", "ROMANIA", "RUSSIAN FEDERATION", "SAN MARINO", "SAUDI ARABIA", "SERBIA", "SIERRA LEONE", "SINGAPORE", "SLOVAKIA", "SLOVENIA", "SOUTH AFRICA", "SPAIN", "SRI LANKA", "SWEDEN", "SWITZERLAND", "TAIWAN", "TAJIKISTAN", "TANZANIA", "THAILAND", "TOGO", "TUNISIA", "TURKEY", "U.S.A.", "UK", "UKRAINE", "UNITED ARAB EMIRATES (UAE)", "URUGUAY", "VANUATU", "VIETNAM", "ZIMBABWE"])
     shipment_to = st.selectbox("Shipment To Port/Country", 
                                options=['EPZ', 'CHITTAGONG', 'BENAPOL', 'Burimari', 'Others', 'SHAHAJALAL INT. AIRPORT'])
-    trade_year = st.number_input("Trading Year", min_value=2022, step=1, max_value=datetime.now().year-1)
+    trade_year = st.number_input("Trading Year", min_value=2022, step=1, max_value=today.year-1 if today.month==1 else today.year)
     quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
     tenor = st.number_input("Tenor of Payment", min_value=0, step=1)
     freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
@@ -81,7 +84,6 @@ if st.button("🔍 Predict Unit Price"):
            
     # Predict price using model/pipeline
     predicted_price = pipeline.predict(input_df)[0] if pipeline else model.predict(input_array.reshape(1,-1))[0]
-    #predicted_price = pipeline.predict(input_df)[0]
         
     # Define a prediction range (±15% as example)
     lower_bound = predicted_price * 0.85
