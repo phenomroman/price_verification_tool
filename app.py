@@ -1,25 +1,6 @@
 import streamlit as st
-import os
-import joblib
-import numpy as np
-import pandas as pd
 from datetime import datetime
-from catboost import CatBoostRegressor
-from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-
-# --- Load all models dynamically ---
-models = {}
-pipelines = {}
-cat_model = CatBoostRegressor()
-for filename in os.listdir("price_models"):
-    if filename.endswith(".cbm"):
-        code = filename.replace(".cbm", "")
-        models[code] = cat_model.load_model(os.path.join("price_models", filename))
-    elif filename.endswith(".pkl"):
-        code = filename.replace(".pkl", "")
-        pipelines[code] = joblib.load(os.path.join("price_models", filename))
+from process import process_model
 
 # --- Input Variables ---
 country_list = ['AFGHANISTAN', 'ALGERIA', 'ARGENTINA', 'AUSTRALIA', 'AUSTRIA', 'BANGLADESH', 'BELARUS', 'BELGIUM', 'BENIN', 'BHUTAN', 'BOSNIA AND HERZEGOVINA', 'BRAZIL', 'BULGARIA', 'BURKINA FASO', 'CAMBODIA', 'CAMEROON', 'CANADA', 'CHAD', 'CHILE', 'CHINA, PEOPLE’S REPUBLIC OF', 'CONGO', 'CROATIA', 'CZECH REPUBLIC', 'CZECH REPUBLIC ', 'DENMARK', 'ECUADOR', 'EGYPT', 'EL-SALVADOR', 'ESTONIA', 'EUROPE', 'FIJI', 'FINLAND', 'FRANCE', 'GERMANY', 'GREECE', 'GUYANA', 'HONGKONG', 'HUNGARY', 'ICELAND', 'INDIA', 'INDONESIA', 'IRAQ', 'IRELAND', 'ITALY', 'JAPAN', 'KIRIBATI, REPUBLIC OF', 'KOREA, REPUBLIC OF (SOUTH)', 'KUWAIT', 'KYRGYZSTAN', 'LATVIA', 'LEBANON', 'LIBERIA', 'LITHUANIA', 'LUXEMBOURG', 'MACAO', 'MACEDONIA', 'MADAGASCAR', 'MALAYSIA', 'MALI', 'MALTA', 'MAURITIUS', 'MEXICO', 'MOROCCO', 'MYANMAR', 'NAURU', 'NEPAL', 'NETHERLANDS', 'NEWZEALAND', 'NORWAY', 'OMAN', 'PAKISTAN', 'PANAMA', 'PAPUA NEW GUINEA', 'PARAGUAY', 'PERU', 'PHILIPPINES', 'POLAND', 'PORTUGAL', 'QATAR', 'ROMANIA', 'RUSSIAN FEDERATION', 'SAMOA', 'SAN MARINO', 'SAUDI ARABIA', 'SENEGAL', 'SERBIA', 'SIERRA LEONE', 'SINGAPORE', 'SLOVAK REPUBLIC', 'SLOVENIA', 'SOUDIA ARABIA', 'SOUTH AFRICA', 'SOUTH SUDAN', 'SPAIN', 'SRI-LANKA', 'SUADIA ARABIA', 'SWEDEN', 'SWITZERLAND', 'TAIWAN', 'TAJIKISTAN', 'TANZANIA', 'THAILAND', 'TOGO', 'TUNISIA', 'TURKEY', 'U.A.E.', 'U.K', 'U.S.A', 'UKRAINE', 'URUGUAY', 'VANUATU', 'VIETNAM', 'ZIMBABWE']
@@ -50,7 +31,7 @@ st.markdown("Use this tool to assess potential under/over-invoicing based on his
 # --- Input Fields ---
 col1, col2 = st.columns(2)
 with col1:
-    goods_code = st.selectbox("Goods Code", list(pipelines.keys() if pipelines else models.keys()))
+    goods_code = st.selectbox("Goods Code", list(goods_info.keys()))
     exporter_country = st.selectbox("Exporter Country", options=country_list, index=default_country_index)
     shipment_from = st.selectbox("Shipment From Port/Country", options=country_list, index=default_country_index)
     trade_year = st.number_input("Trading Year", min_value=2022, step=1, max_value=today.year-1 if today.month==1 else today.year)
@@ -70,31 +51,15 @@ with col2:
     freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
     importer = st.text_input("Importer")
 
-# Construct feature array – set according to model’s training schema
-input_array = np.array([[trade_year, quantity, tenor, freight, exporter, exporter_country, 
-                importer, origin_country, currency, incoterm, shipment_from, shipment_to]],
-                dtype=object)
-year_features = ['YEAR']
-num_features = ['QUANTITY', 'TENOR OF PAYMENT', 'FREIGHT CHARGES']
-cat_features = ["EXPORTER", "EXPORTER'S COUNTRY", "IMPORTER", "COUNTRY_OF_ORIGIN", 
-                "CURRENCY", "TRADE-TERM", "SHIPMENT FROM", "SHIPMENT TO"]
-all_features = year_features + num_features + cat_features
-input_df = pd.DataFrame(data=input_array, columns=all_features)
+input_list = [trade_year, quantity, tenor, freight, exporter, exporter_country, 
+                importer, origin_country, currency, incoterm, shipment_from, shipment_to]
 
 # Output on button press
 if st.button("🔍 Predict Unit Price"):
-    # Model without data preprocessing
-    model = models.get(goods_code)
-    # Pipeline with data preprocessing
-    pipeline = pipelines.get(goods_code)
-           
-    # Predict price using model/pipeline
-    predicted_price = pipeline.predict(input_df)[0] if pipeline else model.predict(input_array.reshape(1,-1))[0]
-        
-    # Define a prediction range (±15% as example)
-    lower_bound = predicted_price * 0.85
-    upper_bound = predicted_price * 1.15
-
+    result = process_model(input=input_list, code=goods_code)
+    predicted_price = result['output']
+    lower_bound = result['lower_bound']
+    upper_bound = result['upper_bound']
     # Show output
     st.success(f"**Predicted Unit Price:** {currency} {predicted_price:,.2f}")
     st.info(f"Expected Range: {currency} {lower_bound:,.2f} – {upper_bound:,.2f}")
