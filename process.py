@@ -21,12 +21,12 @@ cat_features = ["EXPORTER", "EXPORTER'S COUNTRY", "IMPORTER", "COUNTRY_OF_ORIGIN
 all_features = year_features + num_features + cat_features
 
 # Input-Output process function
-def process_model(input=[], code='52094200'):
+def process_model(input=[], code='52094200', tolerance=0.15):
   input_array = np.array([input], dtype=object)
   input_df = pd.DataFrame(data=input_array, columns=all_features)
   output = models[code].predict(input_df)[0]
-  lower_bound = output * 0.85
-  upper_bound = output * 1.15
+  lower_bound = output * (1 - tolerance)
+  upper_bound = output * (1 + tolerance)
   return {
     'output': output, 'lower_bound': lower_bound, 'upper_bound': upper_bound
   }
