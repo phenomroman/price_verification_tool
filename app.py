@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 from datetime import datetime
 from process import process_model
@@ -56,7 +57,23 @@ input_list = [trade_year, quantity, tenor, freight, exporter, exporter_country,
 
 # Output on button press
 if st.button("🔍 Predict Unit Price"):
-    result = process_model(input=input_list, code=goods_code)
+    # Get the output from API call
+    api_endpoint = "http://127.0.0.1:8000/verify"
+    api_input = {
+        "input_list": input_list,
+        "code": goods_code,
+        "tolerance": 0.20
+    }
+    try:
+        api_response = requests.post(api_endpoint, json=api_input)
+        if api_response.status_code == 200:
+            result = api_response.json()['result']
+        else:
+            st.error(f"API request failed with status code: {api_response.status_code}")
+    except requests.exceptions.RequestException as e:
+        # Get the output from direct function call
+        result = process_model(input=input_list, code=goods_code)
+        st.toast(f"API request failed with error: {e}")
     predicted_price = result['output']
     lower_bound = result['lower_bound']
     upper_bound = result['upper_bound']
@@ -65,7 +82,7 @@ if st.button("🔍 Predict Unit Price"):
     st.info(f"Expected Range: {currency} {lower_bound:,.2f} – {upper_bound:,.2f}")
     st.write("Use this range to detect under/over invoicing against declared unit price.")
     st.markdown("---")
-    if goods_code == '58071000' or goods_code == '96061000':
+    if goods_code in ['58071000', '96061000']:
         st.markdown(":red[!!! IMPORTANT !!! The prediction may not be accurate:]")
         st.write(f"Goods '{goods_code}: {goods_description}' did not have sufficient data for training.")
 
