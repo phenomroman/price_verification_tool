@@ -29,8 +29,8 @@ class Output(BaseModel):
 def read_root():
     return {"message": "Price Verification API is running"}
 
-@app.post('/verify', response_model=Output)
-async def verify_price(data: DataInput):
+@app.post('/predict', response_model=Output)
+async def predict_price(data: DataInput):
     if len(data.input_list) != len(ALL_FEATURES):
         raise HTTPException(status_code=400, detail=f"Input list must have {len(ALL_FEATURES)} elements. Got {len(data.input_list)}.")
     

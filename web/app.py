@@ -1,5 +1,6 @@
 import sys
 import os
+import requests
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -72,7 +73,32 @@ input_data = {
 }
 
 if st.button("🔍 Predict Unit Price"):
-    result = inference_engine.predict(input_data, goods_code)
+    api_url = os.environ.get("API_URL")
+    result = None
+    
+    # Try API first if configured
+    if api_url:
+        try:
+            # Add goods_code to input_data as the API likely expects it separately or integrated
+            # Based on api/main.py (not seen but typical), it might expect a specific schema.
+            # Let's conservatively assume we send the exact same data structure the model expects
+            # plus the goods_code if needed.
+            
+            payload = input_data.copy()
+            payload['goods_code'] = goods_code # Ensure goods_code is passed if needed by API
+            
+            response = requests.post(f"{api_url}/predict", json=payload, timeout=5)
+            if response.status_code == 200:
+                result = response.json()
+            else:
+                st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
+        except requests.exceptions.RequestException as e:
+            st.toast(f"API unreachable. Falling back to local model.", icon="⚠️")
+            print(e) # Optional logging
+            
+    # Fallback to local inference if result is still None
+    if result is None:
+        result = inference_engine.predict(input_data, goods_code)
     
     if "error" in result:
         st.error(result["error"])
