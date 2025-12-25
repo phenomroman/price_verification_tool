@@ -8,9 +8,11 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, File, UploadFile
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
+import pandas as pd
+import io
 
 from core.models import inference_engine
 from core.constants import ALL_FEATURES
@@ -92,6 +94,44 @@ async def predict_price(
         raise HTTPException(status_code=400, detail=result["error"])
         
     return Output(result=result)
+
+@app.post('/predict/excel')
+async def predict_excel(file: UploadFile = File(...), tolerance: float = 0.15):
+    """
+    Upload an Excel file to get batch predictions.
+    The file must have columns matching feature names + a 'code' column.
+    """
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Invalid file format. Please upload an Excel file.")
+    
+    try:
+        contents = await file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+        
+        # Verify required columns
+        required_columns = ALL_FEATURES + ['HSCODE'] + ['tolerance']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(missing_columns)}")
+        
+        results = []
+        for _, row in df.iterrows():
+            input_data = {feat: row[feat] for feat in ALL_FEATURES}
+            goods_code = str(row['HSCODE'])
+            tolerance = row['tolerance']
+            
+            prediction = inference_engine.predict(input_data, goods_code, tolerance=tolerance)
+            results.append({
+                "input": input_data,
+                "code": goods_code,
+                "prediction": prediction
+            })
+            
+        return {"filename": file.filename, "results": results}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 if __name__ == '__main__':
     uvicorn.run(app, host='0.0.0.0', port=8000)
