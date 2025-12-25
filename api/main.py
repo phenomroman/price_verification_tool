@@ -110,7 +110,7 @@ async def predict_excel(file: UploadFile = File(...), tolerance: float = 0.15):
         df = pd.read_excel(io.BytesIO(contents))
         
         # Core model handling
-        df_processed = inference_engine.predict_batch(df, goods_code_col='code', tolerance=tolerance)
+        df_processed = inference_engine.predict_batch(df, goods_code_col='HSCODE', tolerance=tolerance)
         
         # Create output buffer
         output = io.BytesIO()
