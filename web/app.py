@@ -79,11 +79,9 @@ if st.button("🔍 Predict Unit Price"):
     # Try API first if configured
     if api_url:
         try:
-            # Convert dictionary input_data to list based on ALL_FEATURES order
-            input_list = [input_data[feature] for feature in ALL_FEATURES]
-            
+            # Send dictionary directly (API now supports this)
             payload = {
-                "input_list": input_list,
+                "input_data": input_data,
                 "code": goods_code
             }
             

@@ -10,7 +10,7 @@ if parent_dir not in sys.path:
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from core.models import inference_engine
 from core.constants import ALL_FEATURES
@@ -18,9 +18,10 @@ from core.constants import ALL_FEATURES
 app = FastAPI(title='Price Verification API')
 
 class DataInput(BaseModel):
-    input_list: List[Any]  # List of values corresponding to ALL_FEATURES
+    # Accept either a dictionary (direct) or a list (legacy/ordered)
+    input_data: Union[Dict[str, Any], List[Any]]
     code: str
-    tolerance: float = 0.15 # Kept for backward compatibility, though logic is currently hardcoded in models.py
+    tolerance: float = 0.15 
 
 class Output(BaseModel):
     result: Dict[str, Any]
@@ -31,13 +32,21 @@ def read_root():
 
 @app.post('/predict', response_model=Output)
 async def predict_price(data: DataInput):
-    if len(data.input_list) != len(ALL_FEATURES):
-        raise HTTPException(status_code=400, detail=f"Input list must have {len(ALL_FEATURES)} elements. Got {len(data.input_list)}.")
+    final_input_data = {}
     
-    # Map list to dict
-    input_data = dict(zip(ALL_FEATURES, data.input_list))
+    # Check type of input_data
+    if isinstance(data.input_data, list):
+        # Legacy mode: Map list to dict using ALL_FEATURES order
+        if len(data.input_data) != len(ALL_FEATURES):
+            raise HTTPException(status_code=400, detail=f"Input list must have {len(ALL_FEATURES)} elements. Got {len(data.input_data)}.")
+        final_input_data = dict(zip(ALL_FEATURES, data.input_data))
+    elif isinstance(data.input_data, dict):
+        # Modern mode: Use dict directly
+        final_input_data = data.input_data
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input format. Must be a list or a dictionary.")
     
-    result = inference_engine.predict(input_data, data.code, tolerance=data.tolerance)
+    result = inference_engine.predict(final_input_data, data.code, tolerance=data.tolerance)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
