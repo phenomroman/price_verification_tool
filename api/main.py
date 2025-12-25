@@ -43,30 +43,30 @@ async def predict_price(
                 "description": "Send a key-value pair dictionary where keys match feature names.",
                 "value": {
                     "input_data": {
-                        "YEAR": int,
-                        "QUANTITY": float,
-                        "TENOR OF PAYMENT": int,
-                        "FREIGHT CHARGES": float,
-                        "EXPORTER": str,
-                        "EXPORTER'S COUNTRY": str,
-                        "IMPORTER": str,
-                        "COUNTRY_OF_ORIGIN": str,
-                        "CURRENCY": str,
-                        "TRADE-TERM": str,
-                        "SHIPMENT FROM": str,
-                        "SHIPMENT TO": str
+                        "YEAR": 2024,
+                        "QUANTITY": 100.0,
+                        "TENOR OF PAYMENT": 30,
+                        "FREIGHT CHARGES": 500.0,
+                        "EXPORTER": "Global Trade Inc",
+                        "EXPORTER'S COUNTRY": "CHINA, PEOPLE’S REPUBLIC OF",
+                        "IMPORTER": "Local Goods Ltd",
+                        "COUNTRY_OF_ORIGIN": "CHINA, PEOPLE’S REPUBLIC OF",
+                        "CURRENCY": "USD",
+                        "TRADE-TERM": "FOB",
+                        "SHIPMENT FROM": "SHANGHAI",
+                        "SHIPMENT TO": "CHITTAGONG"
                     },
-                    "code": str,
-                    "tolerance": float
+                    "code": "52094200",
+                    "tolerance": 0.15
                 }
             },
             "list_input": {
                 "summary": "List Input (Legacy)",
                 "description": "Send a list of values in the specific feature order.",
                 "value": {
-                    "input_data": [int, float, int, float, str, str, str, str, str, str, str, str],
-                    "code": str,
-                    "tolerance": float
+                    "input_data": [2024, 100.0, 30, 500.0, "Global Trade Inc", "CHINA, PEOPLE’S REPUBLIC OF", "Local Goods Ltd", "CHINA, PEOPLE’S REPUBLIC OF", "USD", "FOB", "SHANGHAI", "CHITTAGONG"],
+                    "code": "52094200",
+                    "tolerance": 0.15
                 }
             }
         }
