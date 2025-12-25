@@ -72,10 +72,58 @@ class ModelInference:
         upper_bound = predicted_price * (1 + tolerance)
 
         return {
-            "predicted_price": predicted_price,
-            "lower_bound": lower_bound,
-            "upper_bound": upper_bound
+            "predicted_price": float(predicted_price),
+            "lower_bound": float(lower_bound),
+            "upper_bound": float(upper_bound)
         }
+
+    def predict_batch(self, df: pd.DataFrame, goods_code_col: str = 'code', tolerance: float = 0.15) -> pd.DataFrame:
+        """
+        Predicts unit prices for a batch of entries in a DataFrame.
+        
+        Args:
+            df (pd.DataFrame): DataFrame containing input features and a code column.
+            goods_code_col (str): The column name for HS codes.
+            
+        Returns:
+            pd.DataFrame: Original DataFrame + 'predicted_price', 'lower_bound', 'upper_bound'.
+        """
+        # Ensure all features exist
+        missing = [f for f in ALL_FEATURES if f not in df.columns]
+        if missing:
+             raise ValueError(f"Missing columns: {missing}")
+
+        # Initialize results columns
+        df = df.copy()
+        df['predicted_price'] = np.nan
+        df['lower_bound'] = np.nan
+        df['upper_bound'] = np.nan
+
+        # Group by goods code for efficiency
+        for code, group in df.groupby(goods_code_col):
+            code_str = str(code)
+            model = self.models.get(code_str)
+            pipeline = self.pipelines.get(code_str)
+
+            if not model and not pipeline:
+                continue # Skip or log error in a real scenario
+
+            # Prepare data for this group
+            X = group[ALL_FEATURES]
+            
+            # Predict
+            if pipeline:
+                preds = pipeline.predict(X)
+            else:
+                # CatBoost handles DataFrames well if features match
+                preds = model.predict(X)
+
+            # Update DF using original indices
+            df.loc[group.index, 'predicted_price'] = preds
+            df.loc[group.index, 'lower_bound'] = preds * (1 - tolerance)
+            df.loc[group.index, 'upper_bound'] = preds * (1 + tolerance)
+
+        return df
 
 # Global instance to avoid reloading on every import (if desired/applicable)
 inference_engine = ModelInference()
