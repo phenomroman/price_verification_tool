@@ -23,6 +23,42 @@ class DataInput(BaseModel):
     code: str
     tolerance: float = 0.15 
 
+    class Config:
+        schema_extra = {
+            "examples": {
+                "normal": {
+                    "summary": "Dictionary Input (Recommended)",
+                    "value": {
+                        "input_data": {
+                            "YEAR": 2022,
+                            "QUANTITY": 1000,
+                            "TENOR OF PAYMENT": 90,
+                            "FREIGHT CHARGES": 500.0,
+                            "EXPORTER": "ABC Corp",
+                            "EXPORTER'S COUNTRY": "CHINA PEOPLE'S REPUBLIC (P.R)",
+                            "IMPORTER": "XYZ Ltd",
+                            "COUNTRY_OF_ORIGIN": "CHINA PEOPLE'S REPUBLIC (P.R)",
+                            "CURRENCY": "USD",
+                            "TRADE-TERM": "FOB",
+                            "SHIPMENT FROM": "SHANGHAI",
+                            "SHIPMENT TO": "CHITTAGONG"
+                        },
+                        "code": "52094200",
+                        "tolerance": 0.15
+                    }
+                },
+                "legacy": {
+                    "summary": "List Input (Legacy)",
+                    "description": "Order: YEAR, QUANTITY, TENOR, FREIGHT, EXPORTER, EXPORTER_COUNTRY, IMPORTER, ORIGIN, CURRENCY, INCOTERM, SHIP_FROM, SHIP_TO",
+                    "value": {
+                        "input_data": [2022, 1000, 90, 500.0, "ABC Corp", "CHINA PEOPLE'S REPUBLIC (P.R)", "XYZ Ltd", "CHINA PEOPLE'S REPUBLIC (P.R)", "USD", "FOB", "SHANGHAI", "CHITTAGONG"],
+                        "code": "52094200",
+                        "tolerance": 0.15
+                    }
+                }
+            }
+        } 
+
 class Output(BaseModel):
     result: Dict[str, Any]
 
