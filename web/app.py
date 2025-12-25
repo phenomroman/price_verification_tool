@@ -79,22 +79,23 @@ if st.button("🔍 Predict Unit Price"):
     # Try API first if configured
     if api_url:
         try:
-            # Add goods_code to input_data as the API likely expects it separately or integrated
-            # Based on api/main.py (not seen but typical), it might expect a specific schema.
-            # Let's conservatively assume we send the exact same data structure the model expects
-            # plus the goods_code if needed.
+            # Convert dictionary input_data to list based on ALL_FEATURES order
+            input_list = [input_data[feature] for feature in ALL_FEATURES]
             
-            payload = input_data.copy()
-            payload['goods_code'] = goods_code # Ensure goods_code is passed if needed by API
+            payload = {
+                "input_list": input_list,
+                "code": goods_code,
+                "tolerance": 0.15
+            }
             
             response = requests.post(f"{api_url}/predict", json=payload, timeout=5)
             if response.status_code == 200:
-                result = response.json()
+                result = response.json().get("result")
             else:
                 st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
         except requests.exceptions.RequestException as e:
             st.toast(f"API unreachable. Falling back to local model.", icon="⚠️")
-            print(e) # Optional logging
+            # print(e) # Optional logging
             
     # Fallback to local inference if result is still None
     if result is None:
