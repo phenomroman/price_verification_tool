@@ -77,14 +77,12 @@ class ModelInference:
             "upper_bound": float(upper_bound)
         }
 
-    def predict_batch(self, df: pd.DataFrame, goods_code_col: str = 'code', tolerance: float = 0.15) -> pd.DataFrame:
+    def predict_batch(self, df: pd.DataFrame, goods_code_col: str = 'HSCODE', tolerance: float = 0.15) -> pd.DataFrame:
         """
         Predicts unit prices for a batch of entries in a DataFrame.
-        
         Args:
-            df (pd.DataFrame): DataFrame containing input features and a code column.
-            goods_code_col (str): The column name for HS codes.
-            
+            df (pd.DataFrame): DataFrame containing input features and a goods code column.
+            goods_code_col (str): The column name for HS codes.  
         Returns:
             pd.DataFrame: Original DataFrame + 'predicted_price', 'lower_bound', 'upper_bound'.
         """
