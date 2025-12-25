@@ -84,8 +84,7 @@ if st.button("🔍 Predict Unit Price"):
             
             payload = {
                 "input_list": input_list,
-                "code": goods_code,
-                "tolerance": 0.15
+                "code": goods_code
             }
             
             response = requests.post(f"{api_url}/predict", json=payload, timeout=5)
@@ -95,7 +94,7 @@ if st.button("🔍 Predict Unit Price"):
                 st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
         except requests.exceptions.RequestException as e:
             st.toast(f"API unreachable. Falling back to local model.", icon="⚠️")
-            # print(e) # Optional logging
+            print(f"API Request Exception: {e}")
             
     # Fallback to local inference if result is still None
     if result is None:
