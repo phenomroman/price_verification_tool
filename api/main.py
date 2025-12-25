@@ -8,8 +8,8 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Union
 
 from core.models import inference_engine
@@ -19,45 +19,12 @@ app = FastAPI(title='Price Verification API')
 
 class DataInput(BaseModel):
     # Accept either a dictionary (direct) or a list (legacy/ordered)
-    input_data: Union[Dict[str, Any], List[Any]]
-    code: str
-    tolerance: float = 0.15 
-
-    class Config:
-        schema_extra = {
-            "examples": {
-                "normal": {
-                    "summary": "Dictionary Input (Recommended)",
-                    "value": {
-                        "input_data": {
-                            "YEAR": 2022,
-                            "QUANTITY": 1000,
-                            "TENOR OF PAYMENT": 90,
-                            "FREIGHT CHARGES": 500.0,
-                            "EXPORTER": "ABC Corp",
-                            "EXPORTER'S COUNTRY": "CHINA PEOPLE'S REPUBLIC (P.R)",
-                            "IMPORTER": "XYZ Ltd",
-                            "COUNTRY_OF_ORIGIN": "CHINA PEOPLE'S REPUBLIC (P.R)",
-                            "CURRENCY": "USD",
-                            "TRADE-TERM": "FOB",
-                            "SHIPMENT FROM": "SHANGHAI",
-                            "SHIPMENT TO": "CHITTAGONG"
-                        },
-                        "code": "52094200",
-                        "tolerance": 0.15
-                    }
-                },
-                "legacy": {
-                    "summary": "List Input (Legacy)",
-                    "description": "Order: YEAR, QUANTITY, TENOR, FREIGHT, EXPORTER, EXPORTER_COUNTRY, IMPORTER, ORIGIN, CURRENCY, INCOTERM, SHIP_FROM, SHIP_TO",
-                    "value": {
-                        "input_data": [2022, 1000, 90, 500.0, "ABC Corp", "CHINA PEOPLE'S REPUBLIC (P.R)", "XYZ Ltd", "CHINA PEOPLE'S REPUBLIC (P.R)", "USD", "FOB", "SHANGHAI", "CHITTAGONG"],
-                        "code": "52094200",
-                        "tolerance": 0.15
-                    }
-                }
-            }
-        } 
+    input_data: Union[Dict[str, Any], List[Any]] = Field(
+        ..., 
+        description="Prediction input data as a key-value dictionary or an ordered list."
+    )
+    code: str = Field(..., description="The HS code for the goods.", example="52094200")
+    tolerance: float = Field(0.15, description="Prediction tolerance.")
 
 class Output(BaseModel):
     result: Dict[str, Any]
@@ -67,7 +34,44 @@ def read_root():
     return {"message": "Price Verification API is running"}
 
 @app.post('/predict', response_model=Output)
-async def predict_price(data: DataInput):
+async def predict_price(
+    data: DataInput = Body(
+        ...,
+        openapi_examples={
+            "dictionary_input": {
+                "summary": "Dictionary Input (Recommended)",
+                "description": "Send a key-value pair dictionary where keys match feature names.",
+                "value": {
+                    "input_data": {
+                        "YEAR": int,
+                        "QUANTITY": float,
+                        "TENOR OF PAYMENT": int,
+                        "FREIGHT CHARGES": float,
+                        "EXPORTER": str,
+                        "EXPORTER'S COUNTRY": str,
+                        "IMPORTER": str,
+                        "COUNTRY_OF_ORIGIN": str,
+                        "CURRENCY": str,
+                        "TRADE-TERM": str,
+                        "SHIPMENT FROM": str,
+                        "SHIPMENT TO": str
+                    },
+                    "code": str,
+                    "tolerance": float
+                }
+            },
+            "list_input": {
+                "summary": "List Input (Legacy)",
+                "description": "Send a list of values in the specific feature order.",
+                "value": {
+                    "input_data": [int, float, int, float, str, str, str, str, str, str, str, str],
+                    "code": str,
+                    "tolerance": float
+                }
+            }
+        }
+    )
+):
     final_input_data = {}
     
     # Check type of input_data
