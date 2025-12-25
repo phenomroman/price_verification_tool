@@ -73,7 +73,7 @@ input_data = {
 }
 
 if st.button("🔍 Predict Unit Price"):
-    api_url = os.environ.get("API_URL")
+    api_url = os.environ.get('EXTERNAL_API_URL') or os.environ.get('API_URL') or "http://localhost:8000"
     result = None
     
     # Try API first if configured
@@ -89,7 +89,11 @@ if st.button("🔍 Predict Unit Price"):
             
             response = requests.post(f"{api_url}/predict", json=payload, timeout=5)
             if response.status_code == 200:
-                result = response.json().get("result")
+                try:
+                    result = response.json().get("result")
+                except Exception as e:
+                    st.toast(f"API returned invalid JSON. Falling back to local model.", icon="⚠️")
+                    print(f"JSON parse error: {e}")
             else:
                 st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
         except requests.exceptions.RequestException as e:
