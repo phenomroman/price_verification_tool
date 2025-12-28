@@ -49,13 +49,6 @@ with col2:
     importer = st.text_input("Importer")
 
 # Construct input data dictionary mapping to ALL_FEATURES names
-# Note: The mapping here must match exactly what was in app.py's input_array construction
-# app.py: [trade_year, quantity, tenor, freight, exporter, exporter_country, importer, origin_country, currency, incoterm, shipment_from, shipment_to]
-# constants.py ALL_FEATURES: 
-# YEAR_FEATURES = ['YEAR'] -> trade_year
-# NUM_FEATURES = ['QUANTITY', 'TENOR OF PAYMENT', 'FREIGHT CHARGES'] -> quantity, tenor, freight
-# CAT_FEATURES = ["EXPORTER", "EXPORTER'S COUNTRY", "IMPORTER", "COUNTRY_OF_ORIGIN", "CURRENCY", "TRADE-TERM", "SHIPMENT FROM", "SHIPMENT TO"]
-# -> exporter, exporter_country, importer, origin_country, currency, incoterm, shipment_from, shipment_to
 
 input_data = {
     'YEAR': trade_year,
@@ -79,19 +72,34 @@ if st.button("🔍 Predict Unit Price"):
     # Try API first if configured
     if api_url:
         try:
+            # Get API Key from environment
+            api_key = os.environ.get("API_KEY")
+            if not api_key:
+                st.error("API_KEY environment variable is not set. Please configure it to use the API.")
+                st.stop()
+            headers = {"X-API-KEY": api_key}
+            
             # Send dictionary directly (API now supports this)
             payload = {
                 "input_data": input_data,
                 "code": goods_code
             }
             
-            response = requests.post(f"{api_url}/predict", json=payload, timeout=5)
+            response = requests.post(
+                f"{api_url}/predict", 
+                json=payload, 
+                headers=headers,
+                timeout=5
+            )
             if response.status_code == 200:
                 try:
                     result = response.json().get("result")
                 except Exception as e:
                     st.toast(f"API returned invalid JSON. Falling back to local model.", icon="⚠️")
                     print(f"JSON parse error: {e}")
+            elif response.status_code == 403:
+                st.toast("API Authentication Failed. Falling back to local model.", icon="🚫")
+                print("API Auth Error: 403 Forbidden")
             else:
                 st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
         except requests.exceptions.RequestException as e:

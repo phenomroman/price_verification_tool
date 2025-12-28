@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -11,6 +9,7 @@ services:
       - .:/app
     environment:
       - PYTHONPATH=/app
+      - API_KEYS=${API_KEYS}
 
   web:
     build:
@@ -23,6 +22,6 @@ services:
     environment:
       - PYTHONPATH=/app
       - API_URL=http://api:8000
-      - EXTERNAL_API_URL=https://price-verification-tool.onrender.com
+      - API_KEY=${API_KEY}
     depends_on:
       - api

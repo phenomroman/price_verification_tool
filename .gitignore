@@ -152,3 +152,4 @@ cython_debug/
 
 # Explicitly allow pkl files (models)
 !*.pkl
+.DS_Store

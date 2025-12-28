@@ -2,15 +2,12 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from catboost import CatBoostRegressor
 from .config import MODELS_DIR
 from .constants import ALL_FEATURES
 
 class ModelInference:
     def __init__(self):
-        self.models = {}
         self.pipelines = {}
-        self.cat_model = CatBoostRegressor()
         self.load_models()
 
     def load_models(self):
@@ -20,18 +17,13 @@ class ModelInference:
             return
 
         for filename in os.listdir(MODELS_DIR):
-            if filename.endswith(".cbm"):
-                code = filename.replace(".cbm", "")
-                self.models[code] = self.cat_model.load_model(os.path.join(MODELS_DIR, filename))
-            elif filename.endswith(".pkl"):
+            if filename.endswith(".pkl"):
                 code = filename.replace(".pkl", "")
                 self.pipelines[code] = joblib.load(os.path.join(MODELS_DIR, filename))
 
     def get_available_codes(self):
         """Returns a list of available goods codes."""
-        # Merge keys from both dictionaries
-        codes = list(self.pipelines.keys()) + list(self.models.keys())
-        return sorted(list(set(codes)))
+        return sorted(list(self.pipelines.keys()))
 
     def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15) -> dict:
         """
@@ -55,17 +47,13 @@ class ModelInference:
         input_array = np.array([row], dtype=object)
         input_df = pd.DataFrame(data=input_array, columns=ALL_FEATURES)
 
-        model = self.models.get(goods_code)
         pipeline = self.pipelines.get(goods_code)
 
-        if not model and not pipeline:
+        if not pipeline:
             return {"error": f"No model found for code {goods_code}"}
 
         # Predict
-        if pipeline:
-            predicted_price = pipeline.predict(input_df)[0]
-        else:
-            predicted_price = model.predict(input_array.reshape(1, -1))[0]
+        predicted_price = pipeline.predict(input_df)[0]
 
         # Calculate range
         lower_bound = predicted_price * (1 - tolerance)
@@ -100,21 +88,16 @@ class ModelInference:
         # Group by goods code for efficiency
         for code, group in df.groupby(goods_code_col):
             code_str = str(code)
-            model = self.models.get(code_str)
             pipeline = self.pipelines.get(code_str)
 
-            if not model and not pipeline:
+            if not pipeline:
                 continue # Skip or log error in a real scenario
 
             # Prepare data for this group
             X = group[ALL_FEATURES]
             
             # Predict
-            if pipeline:
-                preds = pipeline.predict(X)
-            else:
-                # CatBoost handles DataFrames well if features match
-                preds = model.predict(X)
+            preds = pipeline.predict(X)
 
             # Update DF using original indices
             df.loc[group.index, 'predicted_price'] = preds

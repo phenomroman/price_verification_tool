@@ -11,12 +11,15 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Body, File, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional, Union
+from typing import Dict, List, Any, Union
 import pandas as pd
 import io
 
 from core.models import inference_engine
 from core.constants import ALL_FEATURES
+
+from api.security import get_api_key
+from fastapi import Depends
 
 app = FastAPI(title='Price Verification API')
 
@@ -38,6 +41,7 @@ def read_root():
 
 @app.post('/predict', response_model=Output)
 async def predict_price(
+    api_key: str = Depends(get_api_key),
     data: DataInput = Body(
         ...,
         openapi_examples={
@@ -97,7 +101,11 @@ async def predict_price(
     return Output(result=result)
 
 @app.post('/predict/excel')
-async def predict_excel(file: UploadFile = File(...), tolerance: float = 0.15):
+async def predict_excel(
+    file: UploadFile = File(...), 
+    tolerance: float = 0.15,
+    api_key: str = Depends(get_api_key)
+):
     """
     Upload an Excel file to get batch predictions.
     The API returns an Excel file with added prediction columns.
