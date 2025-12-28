@@ -75,16 +75,15 @@ if st.button("🔍 Predict Unit Price"):
             # Get API Key from environment
             api_key = os.environ.get("API_KEY")
             if not api_key:
-                st.error("API_KEY environment variable is not set. Please configure it to use the API.")
-                st.stop()
+                st.toast("API_KEY environment variable is not set. Please configure it to use the API.")
             headers = {"X-API-KEY": api_key}
             
-            # Send dictionary directly (API now supports this)
+            # Send dictionary data as input
             payload = {
                 "input_data": input_data,
                 "code": goods_code
             }
-            
+            # Get response from API as output
             response = requests.post(
                 f"{api_url}/predict", 
                 json=payload, 
