@@ -71,40 +71,51 @@ class ModelInference:
         Args:
             df (pd.DataFrame): DataFrame containing input features and a goods code column.
             goods_code_col (str): The column name for HS codes.  
+            tolerance (float): Fallback tolerance if not provided in the DataFrame.
         Returns:
             pd.DataFrame: Original DataFrame + 'predicted_price', 'lower_bound', 'upper_bound'.
         """
-        # Ensure all features exist
-        missing = [f for f in ALL_FEATURES if f not in df.columns]
+        # Create an internal uppercase copy to handle case-insensitivity easily
+        df_work = df.copy()
+        df_work.columns = [c.upper() for c in df_work.columns]
+        
+        # Verify required features (ALL_FEATURES are already uppercase)
+        missing = [f for f in ALL_FEATURES if f not in df_work.columns]
         if missing:
              raise ValueError(f"Missing columns: {missing}")
 
+        # Normalize target code column name
+        actual_code_col = goods_code_col.upper()
+        if actual_code_col not in df_work.columns:
+            raise ValueError(f"Missing goods code column: {goods_code_col}")
+
         # Initialize results columns
-        df = df.copy()
-        df['predicted_price'] = np.nan
-        df['lower_bound'] = np.nan
-        df['upper_bound'] = np.nan
+        df_work['predicted_price'] = np.nan
+        df_work['lower_bound'] = np.nan
+        df_work['upper_bound'] = np.nan
+
+        # Determine row-level tolerances (case-insensitive)
+        row_tolerances = df_work['TOLERANCE'].fillna(tolerance) if 'TOLERANCE' in df_work.columns else tolerance
 
         # Group by goods code for efficiency
-        for code, group in df.groupby(goods_code_col):
-            code_str = str(code)
-            pipeline = self.pipelines.get(code_str)
-
+        for code, group in df_work.groupby(actual_code_col):
+            pipeline = self.pipelines.get(str(code))
             if not pipeline:
-                continue # Skip or log error in a real scenario
+                continue
 
-            # Prepare data for this group
-            X = group[ALL_FEATURES]
+            # Predict (features match uppercase ALL_FEATURES exactly)
+            preds = pipeline.predict(group[ALL_FEATURES])
+
+            # Update working DF
+            df_work.loc[group.index, 'predicted_price'] = preds
             
-            # Predict
-            preds = pipeline.predict(X)
+            # Use row-specific or fallback tolerance
+            tol = row_tolerances.loc[group.index] if isinstance(row_tolerances, pd.Series) else row_tolerances
+            df_work.loc[group.index, 'lower_bound'] = preds * (1 - tol)
+            df_work.loc[group.index, 'upper_bound'] = preds * (1 + tol)
 
-            # Update DF using original indices
-            df.loc[group.index, 'predicted_price'] = preds
-            df.loc[group.index, 'lower_bound'] = preds * (1 - tolerance)
-            df.loc[group.index, 'upper_bound'] = preds * (1 + tolerance)
-
-        return df
+        # Concatenate results back to the original DataFrame to preserve formatting
+        return pd.concat([df, df_work[['predicted_price', 'lower_bound', 'upper_bound']]], axis=1)
 
 # Global instance to avoid reloading on every import (if desired/applicable)
 inference_engine = ModelInference()

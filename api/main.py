@@ -109,6 +109,8 @@ async def predict_excel(
     """
     Upload an Excel file to get batch predictions.
     The API returns an Excel file with added prediction columns.
+    If the Excel file contains a 'tolerance' column, those values will be used for each row.
+    Otherwise, the provided default tolerance (0.15) will be used.
     """
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Invalid file format. Please upload an Excel file.")
