@@ -20,5 +20,5 @@ COPY __init__.py /app/
 # Make port 8501 available to the world outside this container
 EXPOSE 8501
 
-# Run app.py when the container launches
-CMD ["streamlit", "run", "web/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+# Run app.py using shell execution to properly expand the PORT variable
+CMD ["sh", "-c", "streamlit run web/app.py --server.port ${PORT:-8501} --server.address 0.0.0.0"]

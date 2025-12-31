@@ -1,0 +1,53 @@
+steps:
+  # 1. Build API Container
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service', '-f', 'Dockerfile.api', '.']
+
+  # 2. Build Web Container
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service', '-f', 'Dockerfile.web', '.']
+
+  # 3. Push API Container to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service']
+
+  # 4. Push Web Container to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service']
+
+  # 5. Deploy API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'api-service'
+      - '--image'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
+      - '--region'
+      - 'asia-south1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated' # Adjust as needed for security
+
+  # 6. Deploy Web to Cloud Run
+  # Note: The Web service needs to know the API URL. 
+  # Ideally, this is set once manually in Cloud Run variables or retrieved dynamically.
+  # Here we deploy it, assuming env vars are managed in Cloud Run console or previously set.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'web-service'
+      - '--image'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
+      - '--region'
+      - 'asia-south1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
