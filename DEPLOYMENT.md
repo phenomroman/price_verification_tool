@@ -67,3 +67,14 @@ Once set up, every time you push code to the `main` branch on GitHub, Cloud Buil
 1.  Build new Docker images.
 2.  Push them to Artifact Registry.
 3.  Update the Cloud Run services with the new code.
+
+## Troubleshooting & Optimization
+
+### Web Service Performance (Streamlit)
+If your Streamlit app disconnects frequently or loads slowly, it's likely due to missing **Session Affinity**. Streamlit relies on persistent WebSocket connections, but Cloud Run defaults to load balancing requests across multiple instances.
+
+**Fix:** Enable session affinity for the web service.
+```bash
+gcloud run services update web-service --session-affinity --region asia-south1
+```
+This ensures a user stays connected to the same container instance during their session.
