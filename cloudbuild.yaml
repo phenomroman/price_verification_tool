@@ -25,7 +25,7 @@ steps:
       - '--image'
       - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
       - '--region'
-      - 'asia-south1'
+      - 'asia-southeast1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated' # Adjust as needed for security

@@ -1,3 +1,4 @@
+
 # Deployment Guide (Google Cloud Platform)
 
 This guide walks you through setting up automated CI/CD deployment to Google Cloud Run.
@@ -78,3 +79,10 @@ If your Streamlit app disconnects frequently or loads slowly, it's likely due to
 gcloud run services update web-service --session-affinity --region asia-south1
 ```
 This ensures a user stays connected to the same container instance during their session.
+
+## Custom Domains & URLs
+- **Web App:** [https://price-app.phenomroman.com](https://price-app.phenomroman.com)
+    - Hosted via Firebase Hosting (proxy to `web-service`).
+- **API:** [https://price-api.phenomroman.com](https://price-api.phenomroman.com)
+    - Hosted via Cloud Run Domain Mapping (`asia-southeast1`).
+    - Docs: [/docs](https://price-api.phenomroman.com/docs)

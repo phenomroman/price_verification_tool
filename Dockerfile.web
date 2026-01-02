@@ -21,4 +21,4 @@ COPY __init__.py /app/
 EXPOSE 8501
 
 # Run app.py using shell execution to properly expand the PORT variable
-CMD ["sh", "-c", "streamlit run web/app.py --server.port ${PORT:-8501} --server.address 0.0.0.0"]
+CMD ["sh", "-c", "streamlit run web/app.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false --server.enableWebsocketCompression=false"]
