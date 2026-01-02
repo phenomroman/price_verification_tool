@@ -1,19 +1,19 @@
 steps:
   # 1. Build API Container
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service', '-f', 'Dockerfile.api', '.']
+    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service', '-f', 'Dockerfile.api', '.']
 
   # 2. Build Web Container
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service', '-f', 'Dockerfile.web', '.']
+    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service', '-f', 'Dockerfile.web', '.']
 
   # 3. Push API Container to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service']
+    args: ['push', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service']
 
   # 4. Push Web Container to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service']
+    args: ['push', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service']
 
   # 5. Deploy API to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -23,7 +23,7 @@ steps:
       - 'deploy'
       - 'api-service'
       - '--image'
-      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -41,14 +41,14 @@ steps:
       - 'deploy'
       - 'web-service'
       - '--image'
-      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
       - '--region'
-      - 'asia-south1'
+      - 'asia-southeast1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
 options:
     logging: CLOUD_LOGGING_ONLY
 images:
-  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
-  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service'
