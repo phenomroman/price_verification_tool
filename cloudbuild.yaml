@@ -1,11 +1,32 @@
 steps:
-  # 1. Build API Container
+  # 0. Pull latest images for caching (ignore failure if not exists)
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service', '-f', 'Dockerfile.api', '.']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest || true
+        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest || true
 
-  # 2. Build Web Container
+  # 1. Build API Container with caching
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service', '-f', 'Dockerfile.web', '.']
+    args: [
+      'build', 
+      '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service', 
+      '--cache-from', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest',
+      '-f', 'Dockerfile.api', 
+      '.'
+    ]
+
+  # 2. Build Web Container with caching
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build', 
+      '-t', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service', 
+      '--cache-from', 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest',
+      '-f', 'Dockerfile.web', 
+      '.'
+    ]
 
   # 3. Push API Container to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
