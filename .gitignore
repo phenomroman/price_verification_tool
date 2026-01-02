@@ -150,6 +150,5 @@ cython_debug/
 # OS X
 .DS_Store
 
-# Explicitly allow pkl files (models)
-!*.pkl
-.DS_Store
+# ML Models
+price_models/

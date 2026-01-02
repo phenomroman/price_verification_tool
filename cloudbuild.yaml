@@ -52,6 +52,8 @@ steps:
       - '--allow-unauthenticated' # Adjust as needed for security
       #- '--set-secrets'
       #- 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
+      - '--add-volume=name=models,type=cloud-storage,bucket=price-verification-models,readonly=true'
+      - '--add-volume-mount=volume=models,mount-path=/app/price_models'
 
   # 6. Deploy Web to Cloud Run
   # Note: The Web service needs to know the API URL. 
@@ -70,6 +72,8 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--session-affinity'
+      - '--add-volume=name=models,type=cloud-storage,bucket=price-verification-models,readonly=true'
+      - '--add-volume-mount=volume=models,mount-path=/app/price_models'
 options:
     logging: CLOUD_LOGGING_ONLY
 images:
