@@ -29,11 +29,12 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated' # Adjust as needed for security
+      #- '--set-secrets'
+      #- 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
 
   # 6. Deploy Web to Cloud Run
   # Note: The Web service needs to know the API URL. 
   # Ideally, this is set once manually in Cloud Run variables or retrieved dynamically.
-  # Here we deploy it, assuming env vars are managed in Cloud Run console or previously set.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -47,6 +48,7 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--session-affinity'
 options:
     logging: CLOUD_LOGGING_ONLY
 images:
