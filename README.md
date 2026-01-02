@@ -1,40 +1,45 @@
-# price_verification_tool
-Use this tool to assess potential under/over-invoicing based on historical import data.
-## Overview
-The web application predicts unit prices for goods based on historical import data. It attempts to call an external API for predictions, and automatically falls back to local model inference if the API is unavailable.
+# Price Verification Tool 🏷️
 
-## Configuration
+An AI-powered tool to assess potential under/over-invoicing based on historical import data. It provides automated price verification for various goods using machine learning models.
 
-### External API URL
-The web application requires an external API endpoint that implements a `/predict` endpoint compatible with the prediction model.
+## 🚀 Live Access
+- **Web Interface**: [https://price-app.phenomroman.com](https://price-app.phenomroman.com)
+- **API Documentation**: [https://price-api.phenomroman.com/docs](https://price-api.phenomroman.com/docs)
 
-Set the `EXTERNAL_API_URL` environment variable to point to your external API server:
+## 🏗️ Architecture
+The project consist of two primary services co-located in **Singapore (`asia-southeast1`)**:
+1.  **API Service**: A FastAPI backend that handles model inference and batch processing.
+2.  **Web Service**: A Streamlit frontend that provides an interactive calculator and domain-specific visualizations.
 
-```bash
-export EXTERNAL_API_URL="https://api.example.com"
-```
+### Key Features
+- **Scalable Hosting**: Deployed on Google Cloud Run with direct domain mapping.
+- **External ML Models**: Heavy model files (.pkl) are externalized to Google Cloud Storage and mounted via **GCS Fuse** to keep Docker images lightweight.
+- **CI/CD**: Fully automated deployment pipeline using Google Cloud Build.
+- **Security**: API key validation via Cloud Secret Manager.
 
-If `EXTERNAL_API_URL` is not set, the application will try `API_URL`, and if that is also not set, it defaults to `http://localhost:8000`.
+## 🛠️ Local Development
 
-### Fallback Behavior
-If the external API is unreachable or returns an error, the web application automatically falls back to the local inference engine (`core.models.inference_engine.predict`). API failures are displayed as toast warnings (non-blocking notifications) rather than blocking error messages.
+### Prerequisites
+- Python 3.10+
+- The `price_models/` folder (Download from GCS bucket if not present).
 
-## Running the Application
+### Running Locally
+1. **Clone the repo.**
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements-core.txt
+   pip install -r api/requirements.txt
+   pip install -r web/requirements.txt
+   ```
+3. **Run the API**:
+   ```bash
+   uvicorn api.main:app --host 0.0.0.0 --port 8000
+   ```
+4. **Run the Web App**:
+   ```bash
+   streamlit run web/app.py
+   ```
 
-### Using Docker Compose
-```bash
-docker-compose up web
-```
-
-The web application will be available at `http://localhost:8501`.
-
-To use an external API, add the environment variable to the docker-compose.yml:
-```yaml
-services:
-  web:
-    environment:
-      - PYTHONPATH=/app
-      - EXTERNAL_API_URL=https://api.example.com
-```
-## Deployment
-The application can be deployed using Docker Compose as shown above. For production deployment to an external server, make sure to set the `EXTERNAL_API_URL` environment variable to point to your external API server.
+## 📄 License & Privacy
+This project is governed by its [Privacy Policy](PRIVACY_POLICY.md), [Terms of Service](TERMS_OF_SERVICE.md), and [Security Policy](SECURITY.md).
+Licensed under the [MIT License](LICENSE).
