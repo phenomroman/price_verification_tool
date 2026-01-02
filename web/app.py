@@ -2,8 +2,6 @@ import sys
 import os
 import requests
 import streamlit as st
-import numpy as np
-import pandas as pd
 from datetime import datetime
 
 # Ensure the parent directory is in the path to import from core
@@ -37,6 +35,7 @@ with col1:
     currency = st.selectbox("Currency (e.g., USD, EUR)", options=CURRENCY_OPTIONS)
     incoterm = st.selectbox("Incoterm (e.g., FOB, CPT)", options=INCOTERM_OPTIONS)
     exporter = st.text_input("Exporter")
+    predict_button = st.button("🔍 Predict Unit Price")
 
 with col2:
     goods_description = GOODS_INFO.get(goods_code, "No description available.")
@@ -47,9 +46,9 @@ with col2:
     tenor = st.number_input("Tenor of Payment", min_value=0, step=1)
     freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
     importer = st.text_input("Importer")
+    tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
 
 # Construct input data dictionary mapping to ALL_FEATURES names
-
 input_data = {
     'YEAR': trade_year,
     'QUANTITY': quantity,
@@ -64,8 +63,9 @@ input_data = {
     'SHIPMENT FROM': shipment_from,
     'SHIPMENT TO': shipment_to
 }
+tolerance = tolerance_pct / 100.0
 
-if st.button("🔍 Predict Unit Price"):
+if predict_button:
     api_url = os.environ.get('EXTERNAL_API_URL') or os.environ.get('API_URL') or "http://localhost:8000"
     result = None
     
@@ -81,7 +81,8 @@ if st.button("🔍 Predict Unit Price"):
             # Send dictionary data as input
             payload = {
                 "input_data": input_data,
-                "code": goods_code
+                "code": goods_code,
+                "tolerance": tolerance
             }
             # Get response from API as output
             response = requests.post(
@@ -107,7 +108,7 @@ if st.button("🔍 Predict Unit Price"):
             
     # Fallback to local inference if result is still None
     if result is None:
-        result = inference_engine.predict(input_data, goods_code)
+        result = inference_engine.predict(input_data, goods_code, tolerance=tolerance)
     
     if "error" in result:
         st.error(result["error"])
@@ -131,6 +132,7 @@ st.markdown(
     div.stButton > button:first-child {
         display: flex;
         margin: 0 auto;
+        margin-top: 15px;
         justify-content: center;
         align-items: center;
         background-color: teal;

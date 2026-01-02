@@ -7,19 +7,16 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+import io
 import uvicorn
-from fastapi import FastAPI, HTTPException, Body, File, UploadFile
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Depends, Body, File, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Union
-import pandas as pd
-import io
-
 from core.models import inference_engine
 from core.constants import ALL_FEATURES
-
 from api.security import get_api_key
-from fastapi import Depends
 
 app = FastAPI(title='Price Verification API')
 
