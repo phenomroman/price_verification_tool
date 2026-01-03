@@ -2,15 +2,17 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
+import shap
 from .constants import MODELS_DIR, ALL_FEATURES
 
 class ModelInference:
     def __init__(self):
         self.pipelines = {}
+        self.explainers = {}
         self.load_models()
 
     def load_models(self):
-        """Loads models from the price_models directory."""
+        """Loads models and initializes SHAP explainers."""
         if not os.path.exists(MODELS_DIR):
             print(f"Warning: Models directory not found at {MODELS_DIR}")
             return
@@ -18,7 +20,24 @@ class ModelInference:
         for filename in os.listdir(MODELS_DIR):
             if filename.endswith(".pkl"):
                 code = filename.replace(".pkl", "")
-                self.pipelines[code] = joblib.load(os.path.join(MODELS_DIR, filename))
+                try:
+                    pipeline = joblib.load(os.path.join(MODELS_DIR, filename))
+                    self.pipelines[code] = pipeline
+                    
+                    # Initialize TreeExplainer for CatBoost models
+                    # CatBoost models usually have the 'predict' method
+                    # We look for the underlying model if it's wrapped in a Pipeline
+                    model = pipeline
+                    if hasattr(pipeline, "named_steps"):
+                        # If it's a scikit-learn Pipeline, try to find the regressor
+                        for step in pipeline.named_steps.values():
+                            if hasattr(step, "get_feature_importance"):
+                                model = step
+                                break
+                    
+                    self.explainers[code] = shap.TreeExplainer(model)
+                except Exception as e:
+                    print(f"Error loading model {code}: {e}")
 
     def get_available_codes(self):
         """Returns a list of available goods codes."""
@@ -26,18 +45,14 @@ class ModelInference:
 
     def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15) -> dict:
         """
-        Predicts unit price based on input data.
-        
+        Predicts unit price based on input data and calculates feature contributions (SHAP).
         Args:
             input_data (dict): Dictionary containing input features.
-            goods_code (str): The HS code of the goods.
-            
+            goods_code (str): The HS code of the goods.   
         Returns:
             dict: Contains 'predicted_price', 'lower_bound', 'upper_bound'.
         """
-        # Prepare input array/df
-        # The order must match ALL_FEATURES from constants
-        
+        # The input array/df order must match ALL_FEATURES from constants
         try:
             row = [input_data.get(feature) for feature in ALL_FEATURES]
         except KeyError as e:
@@ -47,21 +62,43 @@ class ModelInference:
         input_df = pd.DataFrame(data=input_array, columns=ALL_FEATURES)
 
         pipeline = self.pipelines.get(goods_code)
+        explainer = self.explainers.get(goods_code)
 
         if not pipeline:
             return {"error": f"No model found for code {goods_code}"}
 
-        # Predict
+        # Calculate predicted price
         predicted_price = pipeline.predict(input_df)[0]
 
-        # Calculate range
+        # Calculate SHAP values for explainability
+        feature_importance = {}
+        if explainer:
+            try:
+                # TreeExplainer.shap_values returns values in the same shape as input
+                shap_values = explainer.shap_values(input_df)
+                # For single prediction, take the first row
+                if isinstance(shap_values, list): # Multi-output or CatBoost behavior
+                    values = shap_values[0] if len(shap_values.shape) > 1 else shap_values
+                else:
+                    values = shap_values[0]
+                
+                # Map values to feature names
+                feature_importance = {
+                    feature: float(val) 
+                    for feature, val in zip(ALL_FEATURES, values)
+                }
+            except Exception as e:
+                print(f"SHAP calculation error for {goods_code}: {e}")
+
+        # Calculate price range
         lower_bound = predicted_price * (1 - tolerance)
         upper_bound = predicted_price * (1 + tolerance)
 
         return {
             "predicted_price": float(predicted_price),
             "lower_bound": float(lower_bound),
-            "upper_bound": float(upper_bound)
+            "upper_bound": float(upper_bound),
+            "feature_importance": feature_importance
         }
 
     def predict_batch(self, df: pd.DataFrame, goods_code_col: str = 'HSCODE', tolerance: float = 0.15) -> pd.DataFrame:
@@ -116,5 +153,5 @@ class ModelInference:
         # Concatenate results back to the original DataFrame to preserve formatting
         return pd.concat([df, df_work[['predicted_price', 'lower_bound', 'upper_bound']]], axis=1)
 
-# Global instance to avoid reloading on every import (if desired/applicable)
+# Global instance
 inference_engine = ModelInference()

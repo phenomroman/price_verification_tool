@@ -4,3 +4,7 @@ catboost
 scikit-learn==1.3.2
 joblib
 openpyxl
+shap
+plotly
+fpdf2
+matplotlib
