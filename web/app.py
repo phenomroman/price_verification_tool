@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
-from zoneinfo import ZoneInfo
+import zoneinfo
 
 # Ensure the parent directory is in the path to import from core
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,9 +28,16 @@ def get_user_inputs():
     """Renders the input fields and returns a dictionary of values."""
     with st.sidebar:
         st.header("⚙️ Report Settings")
-        # Common timezones, default to Asia/Dhaka
-        common_tz = ["Asia/Dhaka", "UTC", "Asia/Singapore", "Europe/London", "America/New_York", "Asia/Dubai"]
-        selected_tz = st.selectbox("Your Timezone (for PDF)", common_tz, index=0)
+        # Get all available timezones and sort them
+        all_tz = sorted(list(zoneinfo.available_timezones()))
+        
+        # Determine default index (Asia/Dhaka if available)
+        try:
+            default_tz_index = all_tz.index("Asia/Dhaka")
+        except ValueError:
+            default_tz_index = 0
+            
+        selected_tz = st.selectbox("Your Timezone (for PDF)", all_tz, index=default_tz_index)
         st.session_state["selected_tz"] = selected_tz
 
     try:
@@ -39,50 +46,43 @@ def get_user_inputs():
         default_country_index = 0
 
     col1, col2 = st.columns(2)
+    
+    # Store UI inputs in a temporary dictionary to map to ALL_FEATURES later
+    ui_inputs = {}
+    
     with col1:
         available_codes = inference_engine.get_available_codes()
         goods_code = st.selectbox("Goods Code", available_codes, key="goods_code")
-        exporter_country = st.selectbox("Exporter Country", options=COUNTRY_OPTIONS, index=default_country_index)
-        shipment_from = st.selectbox("Shipment From Port/Country", options=COUNTRY_OPTIONS, index=default_country_index)
-        trade_year = st.number_input("Trading Year", min_value=min_year, step=1, max_value=max_year, key="trade_year")
-        currency = st.selectbox("Currency (e.g., USD, EUR)", options=CURRENCY_OPTIONS)
-        incoterm = st.selectbox("Incoterm (e.g., FOB, CPT)", options=INCOTERM_OPTIONS)
-        exporter = st.text_input("Exporter")
+        ui_inputs["EXPORTER'S COUNTRY"] = st.selectbox("Exporter Country", options=COUNTRY_OPTIONS, index=default_country_index)
+        ui_inputs["SHIPMENT FROM"] = st.selectbox("Shipment From Port/Country", options=COUNTRY_OPTIONS, index=default_country_index)
+        ui_inputs["YEAR"] = st.number_input("Trading Year", min_value=min_year, step=1, max_value=max_year, key="trade_year")
+        ui_inputs["CURRENCY"] = st.selectbox("Currency (e.g., USD, EUR)", options=CURRENCY_OPTIONS)
+        ui_inputs["TRADE-TERM"] = st.selectbox("Incoterm (e.g., FOB, CPT)", options=INCOTERM_OPTIONS)
+        ui_inputs["EXPORTER"] = st.text_input("Exporter")
 
     with col2:
         goods_description = GOODS_INFO.get(goods_code, "No description available.")
         # Update session state to force update for widgets with keys
         st.session_state["desc_single"] = goods_description
         st.text_input(label="Goods Description", value=goods_description, key="desc_single", disabled=True)
-        origin_country = st.selectbox("Country of Origin", options=COUNTRY_OPTIONS, index=default_country_index)
-        shipment_to = st.selectbox("Shipment To Port/Country", options=PORT_OPTIONS)
-        quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
-        tenor = st.number_input("Tenor of Payment", min_value=0, step=1)
-        freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
-        importer = st.text_input("Importer")
+        ui_inputs["COUNTRY_OF_ORIGIN"] = st.selectbox("Country of Origin", options=COUNTRY_OPTIONS, index=default_country_index)
+        ui_inputs["SHIPMENT TO"] = st.selectbox("Shipment To Port/Country", options=PORT_OPTIONS)
+        ui_inputs["QUANTITY"] = st.number_input("Quantity", min_value=0.0, step=0.1)
+        ui_inputs["TENOR OF PAYMENT"] = st.number_input("Tenor of Payment", min_value=0, step=1)
+        ui_inputs["FREIGHT CHARGES"] = st.number_input("Freight Charge", min_value=0.0, step=0.1)
+        ui_inputs["IMPORTER"] = st.text_input("Importer")
     
     tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
     predict_button = st.button("🔍 Predict Unit Price", use_container_width=True)
-    input_data = {
-        'YEAR': trade_year,
-        'QUANTITY': quantity,
-        'TENOR OF PAYMENT': tenor,
-        'FREIGHT CHARGES': freight,
-        'EXPORTER': exporter,
-        "EXPORTER'S COUNTRY": exporter_country,
-        'IMPORTER': importer,
-        'COUNTRY_OF_ORIGIN': origin_country,
-        'CURRENCY': currency,
-        'TRADE-TERM': incoterm,
-        'SHIPMENT FROM': shipment_from,
-        'SHIPMENT TO': shipment_to
-    }
+    
+    # Dynamically build input_data using ALL_FEATURES
+    input_data = {feature: ui_inputs[feature] for feature in ALL_FEATURES if feature in ui_inputs}
     
     return {
         "input_data": input_data,
         "goods_code": goods_code,
         "tolerance": tolerance_pct / 100.0,
-        "currency": currency,
+        "currency": ui_inputs.get("CURRENCY", "USD"),
         "goods_description": goods_description,
         "predict_button": predict_button
     }
@@ -187,7 +187,7 @@ def render_results(result, currency, goods_code, goods_description, input_data):
     # Professional Report Export
     # Capture the exact time localized to the user's selected timezone
     tz_name = st.session_state.get("selected_tz", "Asia/Dhaka")
-    report_time = datetime.now(ZoneInfo(tz_name))
+    report_time = datetime.now(zoneinfo.ZoneInfo(tz_name))
     
     pdf_bytes = generate_prediction_pdf(result, input_data, goods_code, goods_description, report_time=report_time)
     st.download_button(
@@ -238,7 +238,7 @@ def render_batch_processing():
         except Exception as e:
             st.error(f"Error processing batch: {e}")
 
-def render_market_insights():
+def render_market_insights(baseline_data):
     """Renders the Market Insights tab with trend visualizations."""
     st.header("📈 Market Trends & Model Elasticity")
     st.write("Explore how the predicted unit price varies based on historical patterns and trade volumes.")
@@ -252,21 +252,8 @@ def render_market_insights():
     
     col_a, col_b = st.columns(2)
     
-    # Baseline data for "What-If" scenarios
-    baseline = {
-        'YEAR': 2024,
-        'QUANTITY': 1000.0,
-        'TENOR OF PAYMENT': 0,
-        'FREIGHT CHARGES': 0.0,
-        'EXPORTER': "GENERIC_EXPORTER",
-        "EXPORTER'S COUNTRY": "CHINA, PEOPLE’S REPUBLIC OF",
-        'IMPORTER': "GENERIC_IMPORTER",
-        'COUNTRY_OF_ORIGIN': "CHINA, PEOPLE’S REPUBLIC OF",
-        'CURRENCY': "USD",
-        'TRADE-TERM': "FOB",
-        'SHIPMENT FROM': "SHANGHAI",
-        'SHIPMENT TO': "CHITTAGONG"
-    }
+    # Use baseline data from Single Assessment
+    baseline = baseline_data.copy()
 
     with col_a:
         st.subheader("📅 Price Trend (by Year)")
@@ -278,8 +265,10 @@ def render_market_insights():
             res = inference_engine.predict(test_data, goods_code)
             prices.append(res['predicted_price'])
         
+        # Use currency from baseline for label
+        currency = baseline.get('CURRENCY', 'USD')
         fig_year = px.line(x=years, y=prices, markers=True, 
-                          labels={'x': 'Year', 'y': 'Predicted Price (USD)'},
+                          labels={'x': 'Year', 'y': f'Predicted Price ({currency})'},
                           title=f"Averaged Market Trend for {goods_code}")
         fig_year.update_layout(height=400)
         st.plotly_chart(fig_year, use_container_width=True)
@@ -296,7 +285,7 @@ def render_market_insights():
             q_prices.append(res['predicted_price'])
             
         fig_q = px.line(x=quantities, y=q_prices, markers=True, log_x=True,
-                       labels={'x': 'Quantity (Log Scale)', 'y': 'Predicted Price (USD)'},
+                       labels={'x': 'Quantity (Log Scale)', 'y': f'Predicted Price ({currency})'},
                        title=f"Quantity Sensitivity for {goods_code}")
         fig_q.update_layout(height=400)
         st.plotly_chart(fig_q, use_container_width=True)
@@ -378,7 +367,7 @@ def main():
         render_batch_processing()
         
     with tab_market:
-        render_market_insights()
+        render_market_insights(ui["input_data"])
 
 if __name__ == "__main__":
     main()
