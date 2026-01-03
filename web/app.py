@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Ensure the parent directory is in the path to import from core
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +23,13 @@ from core.constants import (
 
 def get_user_inputs():
     """Renders the input fields and returns a dictionary of values."""
+    with st.sidebar:
+        st.header("⚙️ Report Settings")
+        # Common timezones, default to Asia/Dhaka
+        common_tz = ["Asia/Dhaka", "UTC", "Asia/Singapore", "Europe/London", "America/New_York", "Asia/Dubai"]
+        selected_tz = st.selectbox("Your Timezone (for PDF)", common_tz, index=0)
+        st.session_state["selected_tz"] = selected_tz
+
     try:
         default_country_index = COUNTRY_OPTIONS.index('BANGLADESH')
     except ValueError:
@@ -41,7 +49,9 @@ def get_user_inputs():
 
     with col2:
         goods_description = GOODS_INFO.get(goods_code, "No description available.")
-        st.text_input(label="Goods Description", value=goods_description, disabled=True)
+        # Update session state to force update for widgets with keys
+        st.session_state["desc_single"] = goods_description
+        st.text_input(label="Goods Description", value=goods_description, key="desc_single", disabled=True)
         origin_country = st.selectbox("Country of Origin", options=COUNTRY_OPTIONS, index=default_country_index)
         shipment_to = st.selectbox("Shipment To Port/Country", options=PORT_OPTIONS)
         quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
@@ -117,7 +127,7 @@ def render_insights(feature_importance):
         st.warning("No feature insights available for this prediction.")
         return
 
-    st.subheader("🧐 Prediction Insights (Price Drivers)")
+    st.subheader("🧐 Prediction Insights")
     st.write("This chart shows how each feature influenced the final predicted price.")
 
     # Sort features by absolute contribution
@@ -164,15 +174,6 @@ def render_results(result, currency, goods_code, goods_description, input_data):
     st.success(f"**Predicted Unit Price:** {currency} {predicted_price:,.2f}")
     st.info(f"Expected Range: {currency} {lower_bound:,.2f} – {upper_bound:,.2f}")
 
-    # Report Download Button
-    pdf_bytes = generate_prediction_pdf(result, input_data, goods_code, goods_description)
-    st.download_button(
-        label="📄 Download Official Audit Report (PDF)",
-        data=pdf_bytes,
-        file_name=f"Audit_Report_{goods_code}_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
-    )
-
     st.write("Use this range to detect under/over invoicing against declared unit price.")
     
     # Render Explainable AI Insights
@@ -180,6 +181,19 @@ def render_results(result, currency, goods_code, goods_description, input_data):
 
     st.markdown("---")
     
+    # Professional Report Export
+    # Capture the exact time localized to the user's selected timezone
+    tz_name = st.session_state.get("selected_tz", "Asia/Dhaka")
+    report_time = datetime.now(ZoneInfo(tz_name))
+    
+    pdf_bytes = generate_prediction_pdf(result, input_data, goods_code, goods_description, report_time=report_time)
+    st.download_button(
+        label="📄 Download Official Audit Report (PDF)",
+        data=pdf_bytes,
+        file_name=f"Audit_Report_{goods_code}_{report_time.strftime('%Y%m%d%H%M%S')}.pdf",
+        mime="application/pdf"
+    )
+    # Warning message for goods with insufficient data
     if goods_code in ['58071000', '96061000']:
         st.markdown(":red[!!! IMPORTANT !!! The prediction may not be accurate:]")
         st.write(f"Goods '{goods_code}: {goods_description}' did not have sufficient data for training.")
@@ -227,7 +241,6 @@ def render_market_insights():
     st.write("Explore how the predicted unit price varies based on historical patterns and specific factors.")
     
     available_codes = inference_engine.get_available_codes()
-    goods_code = st.selectbox("Select Goods for Trend Analysis", available_codes, key="market_hscode")
     
     col_a, col_b = st.columns(2)
     
@@ -248,6 +261,7 @@ def render_market_insights():
     }
 
     with col_a:
+        goods_code = st.selectbox("Select Goods for Trend Analysis", available_codes, key="market_hscode")
         st.subheader("📅 Price Trend (by Year)")
         years = list(range(2022, 2027))
         prices = []
@@ -265,6 +279,10 @@ def render_market_insights():
         st.caption("This shows the model's perception of price inflation/deflation over time for this HS code.")
 
     with col_b:
+        goods_description = GOODS_INFO.get(goods_code, "No description available.")
+        # Update session state to force update for widgets with keys
+        st.session_state["desc_market"] = goods_description
+        st.text_input(label="Goods Description", value=goods_description, key="desc_market", disabled=True)
         st.subheader("⚖️ Price vs. Quantity (Economy of Scale)")
         quantities = [10, 50, 100, 500, 1000, 5000, 10000]
         q_prices = []
@@ -283,7 +301,7 @@ def render_market_insights():
 
 def inject_custom_css():
     """Injects custom CSS for a premium look."""
-    st.markdown(
+    st.html(
         """
         <style>
         div.stButton > button:first-child {
@@ -311,19 +329,26 @@ def inject_custom_css():
         .stTabs [data-baseweb="tab"] {
             height: 50px;
             white-space: pre-wrap;
+            color: darkgrey;
             background-color: transparent;
             border-radius: 4px 4px 0px 0px;
             gap: 1px;
             padding-top: 10px;
             padding-bottom: 10px;
         }
+        .stTabs [data-baseweb="tab-highlight"] {
+            background-color: #28282B !important;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            color: black !important;
+            font-weight: bold !important;
+        }
         .stTabs [aria-selected="true"] {
-            background-color: #f0f2f6;
-            border-bottom: 2px solid teal !important;
+            color: #28282B !important;
+            font-weight: bold !important;
         }
         </style>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
 def main():

@@ -9,6 +9,8 @@ class ModelInference:
     def __init__(self):
         self.pipelines = {}
         self.explainers = {}
+        self.preprocessors = {}
+        self.feature_names = {}
         self.load_models()
 
     def load_models(self):
@@ -24,20 +26,65 @@ class ModelInference:
                     pipeline = joblib.load(os.path.join(MODELS_DIR, filename))
                     self.pipelines[code] = pipeline
                     
-                    # Initialize TreeExplainer for CatBoost models
-                    # CatBoost models usually have the 'predict' method
-                    # We look for the underlying model if it's wrapped in a Pipeline
+                    # Initialize TreeExplainer and extract steps
                     model = pipeline
+                    preprocessor = None
                     if hasattr(pipeline, "named_steps"):
-                        # If it's a scikit-learn Pipeline, try to find the regressor
-                        for step in pipeline.named_steps.values():
-                            if hasattr(step, "get_feature_importance"):
-                                model = step
-                                break
+                        preprocessor = pipeline.named_steps.get('preprocess')
+                        model = pipeline.named_steps.get('model', pipeline)
+                        
+                        # Fallback discovery if names don't match
+                        if model == pipeline:
+                            for step in reversed(list(pipeline.named_steps.values())):
+                                if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
+                                    model = step
+                                    break
                     
                     self.explainers[code] = shap.TreeExplainer(model)
+                    self.preprocessors[code] = preprocessor
+                    
+                    # Store feature names for this model
+                    extracted_names = None
+                    if preprocessor:
+                        if hasattr(preprocessor, "get_feature_names_out"):
+                            extracted_names = preprocessor.get_feature_names_out()
+                        elif hasattr(preprocessor, "get_feature_names"):
+                            extracted_names = preprocessor.get_feature_names()
+                    
+                    if extracted_names is None:
+                        if hasattr(model, "feature_names_"):
+                            extracted_names = model.feature_names_
+                    
+                    # Convert to list and clean up scikit-learn prefixes (e.g., 'num__QUANTITY' -> 'QUANTITY')
+                    if extracted_names is not None:
+                        try:
+                            # Safely handle potential index-like outputs
+                            if len(extracted_names) > 0 and isinstance(extracted_names[0], (int, np.integer)):
+                                print(f"Warning: Discovered integer feature names for {code}, falling back to ALL_FEATURES.")
+                                extracted_names = None
+                            else:
+                                cleaned_names = []
+                                for n in extracted_names:
+                                    n_str = str(n)
+                                    cleaned_names.append(n_str.split("__", 1)[-1] if "__" in n_str else n_str)
+                                
+                                # If count matches ALL_FEATURES, use original constants for perfect casing/spacing
+                                if len(cleaned_names) == len(ALL_FEATURES):
+                                    extracted_names = ALL_FEATURES
+                                else:
+                                    extracted_names = cleaned_names
+                        except Exception as e:
+                            print(f"Name cleaning failed for {code}: {e}")
+                            extracted_names = None
+                    
+                    if extracted_names is not None:
+                        self.feature_names[code] = extracted_names
+                    else:
+                        self.feature_names[code] = ALL_FEATURES
+                        
+                    print(f"SHAP explainer initialized for {code}")
                 except Exception as e:
-                    print(f"Error loading model {code}: {e}")
+                    print(f"Error loading model or initializing SHAP for {code}: {e}")
 
     def get_available_codes(self):
         """Returns a list of available goods codes."""
@@ -63,32 +110,82 @@ class ModelInference:
 
         pipeline = self.pipelines.get(goods_code)
         explainer = self.explainers.get(goods_code)
+        preprocessor = self.preprocessors.get(goods_code)
+        feature_names = self.feature_names.get(goods_code, ALL_FEATURES)
 
         if not pipeline:
             return {"error": f"No model found for code {goods_code}"}
 
-        # Calculate predicted price
+        # Predict
         predicted_price = pipeline.predict(input_df)[0]
 
         # Calculate SHAP values for explainability
         feature_importance = {}
         if explainer:
             try:
-                # TreeExplainer.shap_values returns values in the same shape as input
-                shap_values = explainer.shap_values(input_df)
-                # For single prediction, take the first row
-                if isinstance(shap_values, list): # Multi-output or CatBoost behavior
-                    values = shap_values[0] if len(shap_values.shape) > 1 else shap_values
-                else:
-                    values = shap_values[0]
+                # If preprocessor exists, we must transform raw features to match model input
+                data_for_shap = input_df
+                if preprocessor:
+                    # Note: transform may return a numpy array
+                    transformed = preprocessor.transform(input_df)
+                    if isinstance(transformed, np.ndarray):
+                        data_for_shap = pd.DataFrame(transformed, columns=feature_names)
+                    else:
+                        data_for_shap = transformed
+
+                # TreeExplainer.shap_values returns values
+                shap_values = explainer.shap_values(data_for_shap)
                 
-                # Map values to feature names
+                # Robust extraction of the first sample's SHAP values
+                if isinstance(shap_values, list):
+                    # List of arrays [class_0, class_1, ...]
+                    values = shap_values[0][0] if len(shap_values[0].shape) > 1 else shap_values[0]
+                elif len(shap_values.shape) == 3:
+                    # (samples, features, classes)
+                    values = shap_values[0, :, 0]
+                elif len(shap_values.shape) == 2:
+                    # (samples, features)
+                    values = shap_values[0]
+                else:
+                    values = shap_values
+                
+                # Select final names based on count match
+                final_names = feature_names
+                if len(values) != len(final_names):
+                     # If model input count doesn't match our name list, use generic string names
+                     final_names = [f"Feature {i}" for i in range(len(values))]
+
+                # Map values to the appropriate feature names (ensure string keys)
                 feature_importance = {
-                    feature: float(val) 
-                    for feature, val in zip(ALL_FEATURES, values)
+                    str(feature): float(val) 
+                    for feature, val in zip(final_names, values)
                 }
             except Exception as e:
                 print(f"SHAP calculation error for {goods_code}: {e}")
+                # Fallback: try default Feature Importance if SHAP fails
+                try:
+                    # Re-extract model step if needed
+                    model = pipeline
+                    if hasattr(pipeline, "named_steps"):
+                        model = pipeline.named_steps.get('model', pipeline)
+                        if model == pipeline:
+                            for step in reversed(list(pipeline.named_steps.values())):
+                                if hasattr(step, "get_feature_importance") or hasattr(step, "feature_importances_"):
+                                    model = step
+                                    break
+                    
+                    # Use get_feature_importance or feature_importances_
+                    if hasattr(model, "get_feature_importance"):
+                         fi = model.get_feature_importance()
+                    elif hasattr(model, "feature_importances_"):
+                        fi = model.feature_importances_
+                    else:
+                        raise ValueError("No importance attribute found")
+                        
+                    feature_importance = {f: float(i) for f, i in zip(feature_names, fi)}
+                    print(f"Fallback to Importance for {goods_code}")
+                except Exception as fe:
+                    print(f"Fallback failed for {goods_code}: {fe}")
 
         # Calculate price range
         lower_bound = predicted_price * (1 - tolerance)
