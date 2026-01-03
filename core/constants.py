@@ -1,6 +1,12 @@
 import os
 import json
 
+# Base directory of the project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Path to the models directory
+MODELS_DIR = os.path.join(BASE_DIR, "price_models")
+
 # Define path to the JSON config file
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 

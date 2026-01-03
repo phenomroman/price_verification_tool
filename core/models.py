@@ -2,8 +2,7 @@ import os
 import joblib
 import numpy as np
 import pandas as pd
-from .config import MODELS_DIR
-from .constants import ALL_FEATURES
+from .constants import MODELS_DIR, ALL_FEATURES
 
 class ModelInference:
     def __init__(self):
