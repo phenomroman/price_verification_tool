@@ -21,6 +21,9 @@ from core.constants import (
     GOODS_INFO, COUNTRY_OPTIONS, PORT_OPTIONS, CURRENCY_OPTIONS, INCOTERM_OPTIONS, ALL_FEATURES
 )
 
+max_year = datetime.now().year
+min_year = max_year - 3
+
 def get_user_inputs():
     """Renders the input fields and returns a dictionary of values."""
     with st.sidebar:
@@ -38,14 +41,13 @@ def get_user_inputs():
     col1, col2 = st.columns(2)
     with col1:
         available_codes = inference_engine.get_available_codes()
-        goods_code = st.selectbox("Goods Code", available_codes)
+        goods_code = st.selectbox("Goods Code", available_codes, key="goods_code")
         exporter_country = st.selectbox("Exporter Country", options=COUNTRY_OPTIONS, index=default_country_index)
         shipment_from = st.selectbox("Shipment From Port/Country", options=COUNTRY_OPTIONS, index=default_country_index)
-        trade_year = st.number_input("Trading Year", min_value=2022, step=1, max_value=datetime.now().year)
+        trade_year = st.number_input("Trading Year", min_value=min_year, step=1, max_value=max_year, key="trade_year")
         currency = st.selectbox("Currency (e.g., USD, EUR)", options=CURRENCY_OPTIONS)
         incoterm = st.selectbox("Incoterm (e.g., FOB, CPT)", options=INCOTERM_OPTIONS)
         exporter = st.text_input("Exporter")
-        predict_button = st.button("🔍 Predict Unit Price")
 
     with col2:
         goods_description = GOODS_INFO.get(goods_code, "No description available.")
@@ -58,8 +60,9 @@ def get_user_inputs():
         tenor = st.number_input("Tenor of Payment", min_value=0, step=1)
         freight = st.number_input("Freight Charge", min_value=0.0, step=0.1)
         importer = st.text_input("Importer")
-        tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
-
+    
+    tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
+    predict_button = st.button("🔍 Predict Unit Price", use_container_width=True)
     input_data = {
         'YEAR': trade_year,
         'QUANTITY': quantity,
@@ -238,9 +241,14 @@ def render_batch_processing():
 def render_market_insights():
     """Renders the Market Insights tab with trend visualizations."""
     st.header("📈 Market Trends & Model Elasticity")
-    st.write("Explore how the predicted unit price varies based on historical patterns and specific factors.")
+    st.write("Explore how the predicted unit price varies based on historical patterns and trade volumes.")
     
     available_codes = inference_engine.get_available_codes()
+    goods_code = st.selectbox("Select Goods for Trend Analysis", available_codes, key="market_hscode")
+    goods_description = GOODS_INFO.get(goods_code, "No description available.")
+    # Update session state to force update for widgets with keys
+    st.session_state["desc_market"] = goods_description
+    st.text_input(label="Goods Description", value=goods_description, key="desc_market", disabled=True)
     
     col_a, col_b = st.columns(2)
     
@@ -261,9 +269,8 @@ def render_market_insights():
     }
 
     with col_a:
-        goods_code = st.selectbox("Select Goods for Trend Analysis", available_codes, key="market_hscode")
         st.subheader("📅 Price Trend (by Year)")
-        years = list(range(2022, 2027))
+        years = list(range(min_year, max_year+1))
         prices = []
         for y in years:
             test_data = baseline.copy()
@@ -279,10 +286,6 @@ def render_market_insights():
         st.caption("This shows the model's perception of price inflation/deflation over time for this HS code.")
 
     with col_b:
-        goods_description = GOODS_INFO.get(goods_code, "No description available.")
-        # Update session state to force update for widgets with keys
-        st.session_state["desc_market"] = goods_description
-        st.text_input(label="Goods Description", value=goods_description, key="desc_market", disabled=True)
         st.subheader("⚖️ Price vs. Quantity (Economy of Scale)")
         quantities = [10, 50, 100, 500, 1000, 5000, 10000]
         q_prices = []
@@ -304,27 +307,26 @@ def inject_custom_css():
     st.html(
         """
         <style>
-        div.stButton > button:first-child {
+        .stButton > button:first-child {
             display: flex;
             margin: 0 auto;
-            margin-top: 15px;
+            width: 50%;
             justify-content: center;
             align-items: center;
-            background-color: teal;
+            opacity: 0.8;
+            background-color: darkslategrey;
             color: white;
-            border: none;
             border-radius: 8px;
             font-size: 16px;
-            font-weight: 500;
+            font-weight: bold;
             transition: background-color 0.3s ease;
         }
-        div.stButton > button:first-child:hover {
-            background-color: #1b5e20;
-            color: #fff;
+        .stButton > button:first-child:hover {
+            opacity: 1;
+            text-shadow: 0 1px 0 black;
         }
-        /* Custom tab styling */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 24px;
+            gap: 25px;
         }
         .stTabs [data-baseweb="tab"] {
             height: 50px;
@@ -337,14 +339,15 @@ def inject_custom_css():
             padding-bottom: 10px;
         }
         .stTabs [data-baseweb="tab-highlight"] {
-            background-color: #28282B !important;
+            background-color: #888888 !important;
+            font-weight: bold !important;
         }
         .stTabs [data-baseweb="tab"]:hover {
-            color: black !important;
+            color: #888888 !important;
             font-weight: bold !important;
         }
         .stTabs [aria-selected="true"] {
-            color: #28282B !important;
+            color: #888888 !important;
             font-weight: bold !important;
         }
         </style>
@@ -357,7 +360,7 @@ def main():
 
     st.title("💰 Unit Price Assessment")
     
-    tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Assessment", "📂 Batch Processing", "📈 Market Insights"])
+    tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
 
     with tab_single:
         st.markdown("Use this tool to assess potential under/over-invoicing based on historical import data.")
