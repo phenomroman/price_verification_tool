@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
-import zoneinfo
+# import zoneinfo
 
 # Ensure the parent directory is in the path to import from core
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -73,7 +73,7 @@ def get_user_inputs():
         ui_inputs["IMPORTER"] = st.text_input("Importer")
     
     tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
-    predict_button = st.button("🔍 Predict Unit Price", use_container_width=True, key="predict_button")
+    predict_button = st.button("🔍 Predict Unit Price", width='stretch', key="predict_button")
     
     # Dynamically build input_data using ALL_FEATURES
     input_data = {feature: ui_inputs[feature] for feature in ALL_FEATURES if feature in ui_inputs}
@@ -322,8 +322,16 @@ def inject_custom_css():
             color: #888888 !important;
             font-weight: bold !important;
         }
+        .stButton > button:first-child {
+            background-color: darkslategrey;
+            color: white;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
         .stButton > button:first-child:hover {
-            opacity: 1;
+            background-color: teal;
             text-shadow: 0 1px 0 black;
         }
         .st-key-predict_button button {
@@ -332,13 +340,6 @@ def inject_custom_css():
             width: 50%;
             justify-content: center;
             align-items: center;
-            opacity: 0.8;
-            background-color: darkslategrey;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
         }
         </style>
         """
