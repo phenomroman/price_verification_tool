@@ -26,19 +26,19 @@ min_year = max_year - 3
 
 def get_user_inputs():
     """Renders the input fields and returns a dictionary of values."""
-    with st.sidebar:
-        st.header("⚙️ Report Settings")
-        # Get all available timezones and sort them
-        all_tz = sorted(list(zoneinfo.available_timezones()))
-        
-        # Determine default index (Asia/Dhaka if available)
-        try:
-            default_tz_index = all_tz.index("Asia/Dhaka")
-        except ValueError:
-            default_tz_index = 0
-            
-        selected_tz = st.selectbox("Your Timezone (for PDF)", all_tz, index=default_tz_index)
-        st.session_state["selected_tz"] = selected_tz
+    # with st.sidebar:
+    #     st.header("⚙️ Report Settings")
+    #     # Get all available timezones and sort them
+    #     all_tz = sorted(list(zoneinfo.available_timezones()))
+    #     
+    #     # Determine default index (Asia/Dhaka if available)
+    #     try:
+    #         default_tz_index = all_tz.index("Asia/Dhaka")
+    #     except ValueError:
+    #         default_tz_index = 0
+    #         
+    #     selected_tz = st.selectbox("Your Timezone (for PDF)", all_tz, index=default_tz_index)
+    #     st.session_state["selected_tz"] = selected_tz
 
     try:
         default_country_index = COUNTRY_OPTIONS.index('BANGLADESH')
@@ -73,7 +73,7 @@ def get_user_inputs():
         ui_inputs["IMPORTER"] = st.text_input("Importer")
     
     tolerance_pct = st.slider("Prediction Tolerance (%)", min_value=1, max_value=50, value=15)
-    predict_button = st.button("🔍 Predict Unit Price", use_container_width=True)
+    predict_button = st.button("🔍 Predict Unit Price", use_container_width=True, key="predict_button")
     
     # Dynamically build input_data using ALL_FEATURES
     input_data = {feature: ui_inputs[feature] for feature in ALL_FEATURES if feature in ui_inputs}
@@ -178,24 +178,25 @@ def render_results(result, currency, goods_code, goods_description, input_data):
     st.info(f"Expected Range: {currency} {lower_bound:,.2f} – {upper_bound:,.2f}")
 
     st.write("Use this range to detect under/over invoicing against declared unit price.")
-    
+    st.markdown("---")
+
     # Render Explainable AI Insights
     render_insights(feature_importance)
 
     st.markdown("---")
     
-    # Professional Report Export
-    # Capture the exact time localized to the user's selected timezone
-    tz_name = st.session_state.get("selected_tz", "Asia/Dhaka")
-    report_time = datetime.now(zoneinfo.ZoneInfo(tz_name))
-    
-    pdf_bytes = generate_prediction_pdf(result, input_data, goods_code, goods_description, report_time=report_time)
-    st.download_button(
-        label="📄 Download Official Audit Report (PDF)",
-        data=pdf_bytes,
-        file_name=f"Audit_Report_{goods_code}_{report_time.strftime('%Y%m%d%H%M%S')}.pdf",
-        mime="application/pdf"
-    )
+    # # Professional Report Export
+    # # Capture the exact time localized to the user's selected timezone
+    # tz_name = st.session_state.get("selected_tz", "Asia/Dhaka")
+    # report_time = datetime.now(zoneinfo.ZoneInfo(tz_name))
+    # 
+    # pdf_bytes = generate_prediction_pdf(result, input_data, goods_code, goods_description, report_time=report_time)
+    # st.download_button(
+    #     label="📄 Download Official Audit Report (PDF)",
+    #     data=pdf_bytes,
+    #     file_name=f"Audit_Report_{goods_code}_{report_time.strftime('%Y%m%d%H%M%S')}.pdf",
+    #     mime="application/pdf"
+    # )
     # Warning message for goods with insufficient data
     if goods_code in ['58071000', '96061000']:
         st.markdown(":red[!!! IMPORTANT !!! The prediction may not be accurate:]")
@@ -296,24 +297,6 @@ def inject_custom_css():
     st.html(
         """
         <style>
-        .stButton > button:first-child {
-            display: flex;
-            margin: 0 auto;
-            width: 50%;
-            justify-content: center;
-            align-items: center;
-            opacity: 0.8;
-            background-color: darkslategrey;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        .stButton > button:first-child:hover {
-            opacity: 1;
-            text-shadow: 0 1px 0 black;
-        }
         .stTabs [data-baseweb="tab-list"] {
             gap: 25px;
         }
@@ -339,6 +322,24 @@ def inject_custom_css():
             color: #888888 !important;
             font-weight: bold !important;
         }
+        .stButton > button:first-child:hover {
+            opacity: 1;
+            text-shadow: 0 1px 0 black;
+        }
+        .st-key-predict_button button {
+            display: flex;
+            margin: 0 auto;
+            width: 50%;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.8;
+            background-color: darkslategrey;
+            color: white;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
         </style>
         """
     )
@@ -349,7 +350,8 @@ def main():
 
     st.title("💰 Unit Price Assessment")
     
-    tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
+    #tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
+    tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
 
     with tab_single:
         st.markdown("Use this tool to assess potential under/over-invoicing based on historical import data.")
@@ -366,8 +368,8 @@ def main():
     with tab_batch:
         render_batch_processing()
         
-    with tab_market:
-        render_market_insights(ui["input_data"])
+    # with tab_market:
+    #     render_market_insights(ui["input_data"])
 
 if __name__ == "__main__":
     main()
