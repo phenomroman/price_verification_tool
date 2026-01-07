@@ -1,12 +1,12 @@
 steps:
   # 0. Pull latest images for caching (ignore failure if not exists)
-  - name: 'gcr.io/cloud-builders/docker'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest || true
-        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest || true
+  #- name: 'gcr.io/cloud-builders/docker'
+  #  entrypoint: 'bash'
+  #  args:
+  #    - '-c'
+  #    - |
+  #      docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest || true
+  #      docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest || true
 
   # 1. Build API Container with caching
   - name: 'gcr.io/cloud-builders/docker'
@@ -50,8 +50,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated' # Adjust as needed for security
-      #- '--set-secrets'
-      #- 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
+      - '--set-secrets'
+      - 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
       - '--add-volume=name=models,type=cloud-storage,bucket=price-verification-models,readonly=true'
       - '--add-volume-mount=volume=models,mount-path=/app/price_models'
 
