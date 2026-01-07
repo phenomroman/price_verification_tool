@@ -16,8 +16,8 @@ COPY core /app/core
 COPY api /app/api
 COPY __init__.py /app/
 
-# Make port 8000 available to the world outside this container
-EXPOSE 8000
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
 
 # Run app.py using shell execution to properly expand the PORT variable
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
