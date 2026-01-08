@@ -80,7 +80,7 @@ steps:
       #- '--add-volume=name=models,type=cloud-storage,bucket=price-verification-models,readonly=true'
       #- '--add-volume-mount=volume=models,mount-path=/app/price_models'
       # ADDED TIMEOUT: Gives the GCS mount more time to initialize
-      - '--timeout=300
+      - '--timeout=300'
       - '--cpu-boost'
 options:
     logging: CLOUD_LOGGING_ONLY
