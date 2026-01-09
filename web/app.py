@@ -345,8 +345,8 @@ def main():
 
     st.title("💰 Unit Price Assessment")
     
-    tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
-    #tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
+    #tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
+    tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
 
     with tab_single:
         st.markdown("Use this tool to assess potential under/over-invoicing based on historical import data.")
@@ -363,8 +363,8 @@ def main():
     with tab_batch:
         render_batch_processing()
         
-    with tab_market:
-        render_market_insights(ui["input_data"], ui["goods_code"])
+    #with tab_market:
+    #    render_market_insights(ui["input_data"], ui["goods_code"])
 
 if __name__ == "__main__":
     main()

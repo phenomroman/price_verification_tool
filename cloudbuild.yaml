@@ -1,12 +1,12 @@
 steps:
   # 0. Pull latest images for caching (ignore failure if not exists)
-  #- name: 'gcr.io/cloud-builders/docker'
-  #  entrypoint: 'bash'
-  #  args:
-  #    - '-c'
-  #    - |
-  #      docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest || true
-  #      docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest || true
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/api-service:latest || true
+        docker pull asia-southeast1-docker.pkg.dev/$PROJECT_ID/price-verification-repo/web-service:latest || true
 
   # 1. Build API Container with caching
   - name: 'gcr.io/cloud-builders/docker'
