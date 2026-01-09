@@ -26,6 +26,21 @@ class ModelInference:
         print(f"Discovered {len(codes)} available models.")
         return sorted(codes)
 
+    def _extract_components(self, pipeline):
+        """Extracts the model and preprocessor from a pipeline."""
+        model = pipeline
+        preprocessor = None
+        if hasattr(pipeline, "named_steps"):
+            preprocessor = pipeline.named_steps.get('preprocess')
+            model = pipeline.named_steps.get('model', pipeline)
+            # Fallback if 'model' step isn't found or named 'model'
+            if model == pipeline:
+                for step in reversed(list(pipeline.named_steps.values())):
+                    if hasattr(step, "get_feature_importance") or hasattr(step, "feature_importances_") or "catboost" in str(type(step)).lower():
+                        model = step
+                        break
+        return model, preprocessor
+
     def _load_single_model(self, code, include_shap=True):
         """Loads a specific model and optionally initializes its SHAP explainer on demand."""
         if code in self.pipelines:
@@ -58,18 +73,8 @@ class ModelInference:
             pipeline = joblib.load(file_path)
             self.pipelines[code] = pipeline
             
-            # Extract model and preprocessor
-            model = pipeline
-            preprocessor = None
-            if hasattr(pipeline, "named_steps"):
-                preprocessor = pipeline.named_steps.get('preprocess')
-                model = pipeline.named_steps.get('model', pipeline)
-                if model == pipeline:
-                    for step in reversed(list(pipeline.named_steps.values())):
-                        if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
-                            model = step
-                            break
-            
+            # Extract model and preprocessor using helper
+            model, preprocessor = self._extract_components(pipeline)
             self.preprocessors[code] = preprocessor
 
             # Extract feature names
@@ -107,14 +112,7 @@ class ModelInference:
             if not pipeline:
                 return False
             
-            model = pipeline
-            if hasattr(pipeline, "named_steps"):
-                model = pipeline.named_steps.get('model', pipeline)
-                if model == pipeline:
-                    for step in reversed(list(pipeline.named_steps.values())):
-                        if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
-                            model = step
-                            break
+            model, _ = self._extract_components(pipeline)
             
             print(f"Initializing SHAP explainer for {code}...")
             self.explainers[code] = shap.TreeExplainer(model)
@@ -128,17 +126,69 @@ class ModelInference:
         """Returns a list of available goods codes."""
         return self.available_codes
 
+    def _get_shap_importance(self, explainer, input_df, feature_names, preprocessor, goods_code):
+        """Calculates SHAP feature importance."""
+        try:
+            # If preprocessor exists, we must transform raw features to match model input
+            data_for_shap = input_df
+            if preprocessor:
+                transformed = preprocessor.transform(input_df)
+                if isinstance(transformed, np.ndarray):
+                    data_for_shap = pd.DataFrame(transformed, columns=feature_names)
+                else:
+                    data_for_shap = transformed
+
+            shap_values = explainer.shap_values(data_for_shap)
+            
+            # Robust extraction of the first sample's SHAP values
+            if isinstance(shap_values, list):
+                values = shap_values[0][0] if len(shap_values[0].shape) > 1 else shap_values[0]
+            elif len(shap_values.shape) == 3:
+                values = shap_values[0, :, 0]
+            elif len(shap_values.shape) == 2:
+                values = shap_values[0]
+            else:
+                values = shap_values
+            
+            final_names = feature_names
+            if len(values) != len(final_names):
+                 final_names = [f"Feature {i}" for i in range(len(values))]
+
+            full_importance = {
+                str(feature): float(val) 
+                for feature, val in zip(final_names, values)
+            }
+            
+            sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
+            return dict(sorted_items[:5])
+        except Exception as e:
+            print(f"SHAP calculation error for {goods_code}: {e}")
+            return None
+
+    def _get_fallback_importance(self, pipeline, feature_names, goods_code):
+        """Calculates fallback feature importance from model attributes."""
+        try:
+            model, _ = self._extract_components(pipeline)
+            
+            if hasattr(model, "get_feature_importance"):
+                 fi = model.get_feature_importance()
+            elif hasattr(model, "feature_importances_"):
+                fi = model.feature_importances_
+            else:
+                raise ValueError("No importance attribute found")
+                
+            full_importance = {f: float(i) for f, i in zip(feature_names, fi)}
+            sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
+            print(f"Fallback to Importance for {goods_code}")
+            return dict(sorted_items[:5])
+        except Exception as fe:
+            print(f"Fallback failed for {goods_code}: {fe}")
+            return {}
+
     def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15, include_shap: bool = True) -> dict:
         """
         Predicts unit price based on input data and calculates feature contributions (SHAP).
-        Args:
-            input_data (dict): Dictionary containing input features.
-            goods_code (str): The HS code of the goods.   
-            include_shap (bool): Whether to calculate feature contributions.
-        Returns:
-            dict: Contains 'predicted_price', 'lower_bound', 'upper_bound', and optionally 'feature_importance'.
         """
-        # The input array/df order must match ALL_FEATURES from constants
         try:
             row = [input_data.get(feature) for feature in ALL_FEATURES]
         except KeyError as e:
@@ -158,83 +208,13 @@ class ModelInference:
         # Predict
         predicted_price = pipeline.predict(input_df)[0]
 
-        # Calculate SHAP values for explainability
+        # Calculate SHAP or Fallback
         feature_importance = {}
         if explainer:
-            try:
-                # If preprocessor exists, we must transform raw features to match model input
-                data_for_shap = input_df
-                if preprocessor:
-                    # Note: transform may return a numpy array
-                    transformed = preprocessor.transform(input_df)
-                    if isinstance(transformed, np.ndarray):
-                        data_for_shap = pd.DataFrame(transformed, columns=feature_names)
-                    else:
-                        data_for_shap = transformed
-
-                # TreeExplainer.shap_values returns values
-                shap_values = explainer.shap_values(data_for_shap)
-                
-                # Robust extraction of the first sample's SHAP values
-                if isinstance(shap_values, list):
-                    # List of arrays [class_0, class_1, ...]
-                    values = shap_values[0][0] if len(shap_values[0].shape) > 1 else shap_values[0]
-                elif len(shap_values.shape) == 3:
-                    # (samples, features, classes)
-                    values = shap_values[0, :, 0]
-                elif len(shap_values.shape) == 2:
-                    # (samples, features)
-                    values = shap_values[0]
-                else:
-                    values = shap_values
-                
-                # Select final names based on count match
-                final_names = feature_names
-                if len(values) != len(final_names):
-                     # If model input count doesn't match our name list, use generic string names
-                     final_names = [f"Feature {i}" for i in range(len(values))]
-
-                # Map values to the appropriate feature names (ensure string keys)
-
-                # Map values to the appropriate feature names (ensure string keys)
-                full_importance = {
-                    str(feature): float(val) 
-                    for feature, val in zip(final_names, values)
-                }
-                
-                # Sort by absolute importance (descending) and take top 5
-                sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
-                feature_importance = dict(sorted_items[:5])
-            except Exception as e:
-                print(f"SHAP calculation error for {goods_code}: {e}")
-                # Fallback: try default Feature Importance if SHAP fails
-                try:
-                    # Re-extract model step if needed
-                    model = pipeline
-                    if hasattr(pipeline, "named_steps"):
-                        model = pipeline.named_steps.get('model', pipeline)
-                        if model == pipeline:
-                            for step in reversed(list(pipeline.named_steps.values())):
-                                if hasattr(step, "get_feature_importance") or hasattr(step, "feature_importances_"):
-                                    model = step
-                                    break
-                    
-                    # Use get_feature_importance or feature_importances_
-                    if hasattr(model, "get_feature_importance"):
-                         fi = model.get_feature_importance()
-                    elif hasattr(model, "feature_importances_"):
-                        fi = model.feature_importances_
-                    else:
-                        raise ValueError("No importance attribute found")
-                        
-                    full_importance = {f: float(i) for f, i in zip(feature_names, fi)}
-                    
-                    # Sort by absolute importance (descending) and take top 10
-                    sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
-                    feature_importance = dict(sorted_items[:5])
-                    print(f"Fallback to Importance for {goods_code}")
-                except Exception as fe:
-                    print(f"Fallback failed for {goods_code}: {fe}")
+            feature_importance = self._get_shap_importance(explainer, input_df, feature_names, preprocessor, goods_code)
+        
+        if not feature_importance: # Try fallback if SHAP missed or failed
+             feature_importance = self._get_fallback_importance(pipeline, feature_names, goods_code)
 
         # Calculate price range
         lower_bound = predicted_price * (1 - tolerance)

@@ -16,7 +16,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from core.models import inference_engine
-from core.pdf_reports import generate_prediction_pdf
+# from core.pdf_reports import generate_prediction_pdf
 from core.constants import (
     GOODS_INFO, COUNTRY_OPTIONS, PORT_OPTIONS, CURRENCY_OPTIONS, INCOTERM_OPTIONS, ALL_FEATURES
 )
