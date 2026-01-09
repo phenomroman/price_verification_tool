@@ -70,7 +70,7 @@ class ModelInference:
                 for n in extracted_names:
                     n_str = str(n)
                     cleaned_names.append(n_str.split("__", 1)[-1] if "__" in n_str else n_str)
-                self.feature_names[code] = ALL_FEATURES if len(cleaned_names) == len(ALL_FEATURES) else cleaned_names
+                self.feature_names[code] = cleaned_names
             else:
                 self.feature_names[code] = ALL_FEATURES
 
@@ -177,10 +177,16 @@ class ModelInference:
                      final_names = [f"Feature {i}" for i in range(len(values))]
 
                 # Map values to the appropriate feature names (ensure string keys)
-                feature_importance = {
+
+                # Map values to the appropriate feature names (ensure string keys)
+                full_importance = {
                     str(feature): float(val) 
                     for feature, val in zip(final_names, values)
                 }
+                
+                # Sort by absolute importance (descending) and take top 5
+                sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
+                feature_importance = dict(sorted_items[:5])
             except Exception as e:
                 print(f"SHAP calculation error for {goods_code}: {e}")
                 # Fallback: try default Feature Importance if SHAP fails
@@ -203,7 +209,11 @@ class ModelInference:
                     else:
                         raise ValueError("No importance attribute found")
                         
-                    feature_importance = {f: float(i) for f, i in zip(feature_names, fi)}
+                    full_importance = {f: float(i) for f, i in zip(feature_names, fi)}
+                    
+                    # Sort by absolute importance (descending) and take top 10
+                    sorted_items = sorted(full_importance.items(), key=lambda x: abs(x[1]), reverse=True)
+                    feature_importance = dict(sorted_items[:5])
                     print(f"Fallback to Importance for {goods_code}")
                 except Exception as fe:
                     print(f"Fallback failed for {goods_code}: {fe}")

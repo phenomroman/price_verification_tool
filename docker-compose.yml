@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
       - .:/app
     environment:
@@ -21,7 +21,7 @@ services:
       - .:/app
     environment:
       - PYTHONPATH=/app
-      - API_URL=http://api:8000
+      - API_URL=http://api:8080
       - API_KEY=${API_KEY}
     depends_on:
       - api

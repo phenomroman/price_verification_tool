@@ -157,7 +157,7 @@ def render_insights(feature_importance):
         showlegend=False
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     st.caption("🔴 Red bars indicate features that increased the predicted price. 🟢 Green bars indicates ones that decreased it.")
 
@@ -221,7 +221,7 @@ def render_batch_processing():
                     processed_df = inference_engine.predict_batch(df)
                 
                 st.success("Batch processing complete!")
-                st.dataframe(processed_df.head(20), use_container_width=True)
+                st.dataframe(processed_df.head(20), width='stretch')
                 
                 # Download link for result
                 output = io.BytesIO()
@@ -266,7 +266,7 @@ def render_market_insights(baseline_data, goods_code):
                           labels={'x': 'Year', 'y': f'Predicted Price ({currency})'},
                           title=f"Averaged Market Trend for {goods_code}")
         fig_year.update_layout(height=400)
-        st.plotly_chart(fig_year, use_container_width=True)
+        st.plotly_chart(fig_year, width='stretch')
         st.caption("This shows the model's perception of price inflation/deflation over time for this HS code.")
 
     with col_b:
@@ -283,7 +283,7 @@ def render_market_insights(baseline_data, goods_code):
                        labels={'x': 'Quantity (Log Scale)', 'y': f'Predicted Price ({currency})'},
                        title=f"Quantity Sensitivity for {goods_code}")
         fig_q.update_layout(height=400)
-        st.plotly_chart(fig_q, use_container_width=True)
+        st.plotly_chart(fig_q, width='stretch')
         st.caption("How unit price typically shifts with shipment volume (Economy of Scale).")
 
 def inject_custom_css():
