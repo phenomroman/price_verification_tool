@@ -62,9 +62,7 @@ def get_user_inputs():
 
     with col2:
         goods_description = GOODS_INFO.get(goods_code, "No description available.")
-        # Update session state to force update for widgets with keys
-        st.session_state["desc_single"] = goods_description
-        st.text_input(label="Goods Description", value=goods_description, key="desc_single", disabled=True)
+        st.text_input(label="Goods Description", value=goods_description, disabled=True)
         ui_inputs["COUNTRY_OF_ORIGIN"] = st.selectbox("Country of Origin", options=COUNTRY_OPTIONS, index=default_country_index)
         ui_inputs["SHIPMENT TO"] = st.selectbox("Shipment To Port/Country", options=PORT_OPTIONS)
         ui_inputs["QUANTITY"] = st.number_input("Quantity", min_value=0.0, step=0.1)
@@ -204,7 +202,7 @@ def render_results(result, currency, goods_code, goods_description, input_data):
 
 def render_batch_processing():
     """Renders the batch processing tab."""
-    st.header("📂 Batch Audit Processing")
+    st.header("📂 Batch Data Processing")
     st.write("Upload an Excel file containing invoice details to calculate predicted prices for all rows.")
     
     st.info("The Excel file must contain columns matching the feature names: **YEAR, QUANTITY, TENOR OF PAYMENT, FREIGHT CHARGES, EXPORTER, EXPORTER'S COUNTRY, IMPORTER, COUNTRY_OF_ORIGIN, CURRENCY, TRADE-TERM, SHIPMENT FROM, SHIPMENT TO,** and **HSCODE**, **TOLERANCE**.")
@@ -239,17 +237,13 @@ def render_batch_processing():
         except Exception as e:
             st.error(f"Error processing batch: {e}")
 
-def render_market_insights(baseline_data):
+def render_market_insights(baseline_data, goods_code):
     """Renders the Market Insights tab with trend visualizations."""
     st.header("📈 Market Trends & Model Elasticity")
-    st.write("Explore how the predicted unit price varies based on historical patterns and trade volumes.")
     
-    available_codes = inference_engine.get_available_codes()
-    goods_code = st.selectbox("Select Goods for Trend Analysis", available_codes, key="market_hscode")
     goods_description = GOODS_INFO.get(goods_code, "No description available.")
-    # Update session state to force update for widgets with keys
-    st.session_state["desc_market"] = goods_description
-    st.text_input(label="Goods Description", value=goods_description, key="desc_market", disabled=True)
+    st.info(f"Currently analyzing trends for: **{goods_code}: {goods_description}**")
+    st.write("Explore how the predicted unit price varies based on historical patterns and trade volumes.")
     
     col_a, col_b = st.columns(2)
     
@@ -351,8 +345,8 @@ def main():
 
     st.title("💰 Unit Price Assessment")
     
-    #tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
-    tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
+    tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
+    #tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
 
     with tab_single:
         st.markdown("Use this tool to assess potential under/over-invoicing based on historical import data.")
@@ -369,8 +363,8 @@ def main():
     with tab_batch:
         render_batch_processing()
         
-    # with tab_market:
-    #     render_market_insights(ui["input_data"])
+    with tab_market:
+        render_market_insights(ui["input_data"], ui["goods_code"])
 
 if __name__ == "__main__":
     main()
