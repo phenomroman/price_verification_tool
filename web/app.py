@@ -120,7 +120,7 @@ def run_prediction(input_data, goods_code, tolerance):
             
     # Fallback to local inference
     if result is None:
-        result = inference_engine.predict(input_data, goods_code, tolerance=tolerance)
+        result = inference_engine.predict(input_data, goods_code, tolerance=tolerance, include_shap=False)
     
     return result
 

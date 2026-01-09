@@ -19,10 +19,8 @@ COPY core /app/core
 COPY api /app/api
 COPY __init__.py /app/
 
-# Make port 8080 available to the world outside this container
+# Make port 8080 available (default for Cloud Run)
 EXPOSE 8080
 
-# Run app.py using shell execution to properly expand the PORT variable
-#CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
-# Alternative: Use direct exec form. Cloud Run handles the port injection.
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+# Run uvicorn directly. Cloud Run injects the PORT environment variable.
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]

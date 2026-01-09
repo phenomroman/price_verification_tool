@@ -11,93 +11,114 @@ class ModelInference:
         self.explainers = {}
         self.preprocessors = {}
         self.feature_names = {}
-        self.load_models()
+        self.available_codes = self._discover_models()
 
-    def load_models(self):
-        """Loads models and initializes SHAP explainers."""
+    def _discover_models(self):
+        """Discovers available goods codes from the models directory."""
         if not os.path.exists(MODELS_DIR):
             print(f"Warning: Models directory not found at {MODELS_DIR}")
-            return
+            return []
+        
+        codes = [f.replace(".pkl", "") for f in os.listdir(MODELS_DIR) if f.endswith(".pkl")]
+        print(f"Discovered {len(codes)} available models.")
+        return sorted(codes)
 
-        for filename in os.listdir(MODELS_DIR):
-            if filename.endswith(".pkl"):
-                code = filename.replace(".pkl", "")
-                try:
-                    pipeline = joblib.load(os.path.join(MODELS_DIR, filename))
-                    self.pipelines[code] = pipeline
-                    
-                    # Initialize TreeExplainer and extract steps
-                    model = pipeline
-                    preprocessor = None
-                    if hasattr(pipeline, "named_steps"):
-                        preprocessor = pipeline.named_steps.get('preprocess')
-                        model = pipeline.named_steps.get('model', pipeline)
-                        
-                        # Fallback discovery if names don't match
-                        if model == pipeline:
-                            for step in reversed(list(pipeline.named_steps.values())):
-                                if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
-                                    model = step
-                                    break
-                    
-                    self.explainers[code] = shap.TreeExplainer(model)
-                    self.preprocessors[code] = preprocessor
-                    
-                    # Store feature names for this model
-                    extracted_names = None
-                    if preprocessor:
-                        if hasattr(preprocessor, "get_feature_names_out"):
-                            extracted_names = preprocessor.get_feature_names_out()
-                        elif hasattr(preprocessor, "get_feature_names"):
-                            extracted_names = preprocessor.get_feature_names()
-                    
-                    if extracted_names is None:
-                        if hasattr(model, "feature_names_"):
-                            extracted_names = model.feature_names_
-                    
-                    # Convert to list and clean up scikit-learn prefixes (e.g., 'num__QUANTITY' -> 'QUANTITY')
-                    if extracted_names is not None:
-                        try:
-                            # Safely handle potential index-like outputs
-                            if len(extracted_names) > 0 and isinstance(extracted_names[0], (int, np.integer)):
-                                print(f"Warning: Discovered integer feature names for {code}, falling back to ALL_FEATURES.")
-                                extracted_names = None
-                            else:
-                                cleaned_names = []
-                                for n in extracted_names:
-                                    n_str = str(n)
-                                    cleaned_names.append(n_str.split("__", 1)[-1] if "__" in n_str else n_str)
-                                
-                                # If count matches ALL_FEATURES, use original constants for perfect casing/spacing
-                                if len(cleaned_names) == len(ALL_FEATURES):
-                                    extracted_names = ALL_FEATURES
-                                else:
-                                    extracted_names = cleaned_names
-                        except Exception as e:
-                            print(f"Name cleaning failed for {code}: {e}")
-                            extracted_names = None
-                    
-                    if extracted_names is not None:
-                        self.feature_names[code] = extracted_names
-                    else:
-                        self.feature_names[code] = ALL_FEATURES
-                        
-                    print(f"SHAP explainer initialized for {code}")
-                except Exception as e:
-                    print(f"Error loading model or initializing SHAP for {code}: {e}")
+    def _load_single_model(self, code, include_shap=True):
+        """Loads a specific model and optionally initializes its SHAP explainer on demand."""
+        if code in self.pipelines:
+            # If already loaded but SHAP is now requested and was previously skipped
+            if include_shap and code not in self.explainers:
+                return self._init_shap(code)
+            return True
+
+        if code not in self.available_codes:
+            return False
+
+        file_path = os.path.join(MODELS_DIR, f"{code}.pkl")
+        try:
+            print(f"Loading model for {code}...")
+            pipeline = joblib.load(file_path)
+            self.pipelines[code] = pipeline
+            
+            # Extract model and preprocessor
+            model = pipeline
+            preprocessor = None
+            if hasattr(pipeline, "named_steps"):
+                preprocessor = pipeline.named_steps.get('preprocess')
+                model = pipeline.named_steps.get('model', pipeline)
+                if model == pipeline:
+                    for step in reversed(list(pipeline.named_steps.values())):
+                        if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
+                            model = step
+                            break
+            
+            self.preprocessors[code] = preprocessor
+
+            # Extract feature names
+            extracted_names = None
+            if preprocessor:
+                if hasattr(preprocessor, "get_feature_names_out"):
+                    extracted_names = preprocessor.get_feature_names_out()
+                elif hasattr(preprocessor, "get_feature_names"):
+                    extracted_names = preprocessor.get_feature_names()
+            
+            if extracted_names is None and hasattr(model, "feature_names_"):
+                extracted_names = model.feature_names_
+
+            if extracted_names is not None:
+                cleaned_names = []
+                for n in extracted_names:
+                    n_str = str(n)
+                    cleaned_names.append(n_str.split("__", 1)[-1] if "__" in n_str else n_str)
+                self.feature_names[code] = ALL_FEATURES if len(cleaned_names) == len(ALL_FEATURES) else cleaned_names
+            else:
+                self.feature_names[code] = ALL_FEATURES
+
+            if include_shap:
+                return self._init_shap(code)
+            
+            return True
+        except Exception as e:
+            print(f"Error loading model {code}: {e}")
+            return False
+
+    def _init_shap(self, code):
+        """Initializes the SHAP explainer for an already loaded model."""
+        try:
+            pipeline = self.pipelines.get(code)
+            if not pipeline:
+                return False
+            
+            model = pipeline
+            if hasattr(pipeline, "named_steps"):
+                model = pipeline.named_steps.get('model', pipeline)
+                if model == pipeline:
+                    for step in reversed(list(pipeline.named_steps.values())):
+                        if hasattr(step, "get_feature_importance") or "catboost" in str(type(step)).lower():
+                            model = step
+                            break
+            
+            print(f"Initializing SHAP explainer for {code}...")
+            self.explainers[code] = shap.TreeExplainer(model)
+            print(f"SHAP explainer for {code} ready.")
+            return True
+        except Exception as e:
+            print(f"SHAP initialization failed for {code}: {e}")
+            return False
 
     def get_available_codes(self):
         """Returns a list of available goods codes."""
-        return sorted(list(self.pipelines.keys()))
+        return self.available_codes
 
-    def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15) -> dict:
+    def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15, include_shap: bool = True) -> dict:
         """
         Predicts unit price based on input data and calculates feature contributions (SHAP).
         Args:
             input_data (dict): Dictionary containing input features.
             goods_code (str): The HS code of the goods.   
+            include_shap (bool): Whether to calculate feature contributions.
         Returns:
-            dict: Contains 'predicted_price', 'lower_bound', 'upper_bound'.
+            dict: Contains 'predicted_price', 'lower_bound', 'upper_bound', and optionally 'feature_importance'.
         """
         # The input array/df order must match ALL_FEATURES from constants
         try:
@@ -108,13 +129,13 @@ class ModelInference:
         input_array = np.array([row], dtype=object)
         input_df = pd.DataFrame(data=input_array, columns=ALL_FEATURES)
 
+        if not self._load_single_model(goods_code, include_shap=include_shap):
+            return {"error": f"No model found for code {goods_code}"}
+
         pipeline = self.pipelines.get(goods_code)
         explainer = self.explainers.get(goods_code)
         preprocessor = self.preprocessors.get(goods_code)
         feature_names = self.feature_names.get(goods_code, ALL_FEATURES)
-
-        if not pipeline:
-            return {"error": f"No model found for code {goods_code}"}
 
         # Predict
         predicted_price = pipeline.predict(input_df)[0]
@@ -232,7 +253,11 @@ class ModelInference:
 
         # Group by goods code for efficiency
         for code, group in df_work.groupby(actual_code_col):
-            pipeline = self.pipelines.get(str(code))
+            code_str = str(code)
+            if not self._load_single_model(code_str, include_shap=False):
+                continue
+
+            pipeline = self.pipelines.get(code_str)
             if not pipeline:
                 continue
 
