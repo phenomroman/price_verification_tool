@@ -188,7 +188,14 @@ class ModelInference:
     def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15, include_shap: bool = True) -> dict:
         """
         Predicts unit price based on input data and calculates feature contributions (SHAP).
+        Args:
+            input_data (dict): Dictionary containing input features.
+            goods_code (str): The HS code of the goods.   
+            include_shap (bool): Whether to calculate feature contributions.
+        Returns:
+            dict: Contains 'predicted_price', 'lower_bound', 'upper_bound', and optionally 'feature_importance'.
         """
+        # The input array/df order must match ALL_FEATURES from constants
         try:
             row = [input_data.get(feature) for feature in ALL_FEATURES]
         except KeyError as e:
