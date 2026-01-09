@@ -129,7 +129,7 @@ def render_insights(feature_importance):
         return
 
     st.subheader("🧐 Prediction Insights")
-    st.write("This chart shows how each feature influenced the final predicted price.")
+    st.write("This chart shows how the top features influenced the final predicted price.")
 
     # Sort features by absolute contribution
     sorted_features = sorted(feature_importance.items(), key=lambda x: abs(x[1]), reverse=True)
