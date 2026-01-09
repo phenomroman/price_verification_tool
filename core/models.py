@@ -3,14 +3,17 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
+from collections import OrderedDict
 from .constants import MODELS_DIR, ALL_FEATURES
+
+MAX_CACHE_SIZE = 20
 
 class ModelInference:
     def __init__(self):
-        self.pipelines = {}
-        self.explainers = {}
-        self.preprocessors = {}
-        self.feature_names = {}
+        self.pipelines = OrderedDict()
+        self.explainers = OrderedDict()
+        self.preprocessors = OrderedDict()
+        self.feature_names = OrderedDict()
         self.available_codes = self._discover_models()
 
     def _discover_models(self):
@@ -26,6 +29,12 @@ class ModelInference:
     def _load_single_model(self, code, include_shap=True):
         """Loads a specific model and optionally initializes its SHAP explainer on demand."""
         if code in self.pipelines:
+            # LRU: Move to end to mark as recently used
+            self.pipelines.move_to_end(code)
+            if code in self.explainers: self.explainers.move_to_end(code)
+            if code in self.preprocessors: self.preprocessors.move_to_end(code)
+            if code in self.feature_names: self.feature_names.move_to_end(code)
+
             # If already loaded but SHAP is now requested and was previously skipped
             if include_shap and code not in self.explainers:
                 return self._init_shap(code)
@@ -33,6 +42,15 @@ class ModelInference:
 
         if code not in self.available_codes:
             return False
+
+        # Eviction logic: Remove oldest if cache is full
+        if len(self.pipelines) >= MAX_CACHE_SIZE:
+             removed_code, _ = self.pipelines.popitem(last=False)
+             # Clean up other dicts
+             self.explainers.pop(removed_code, None)
+             self.preprocessors.pop(removed_code, None)
+             self.feature_names.pop(removed_code, None)
+             print(f"Evicted model {removed_code} from cache to free memory.")
 
         file_path = os.path.join(MODELS_DIR, f"{code}.pkl")
         try:
