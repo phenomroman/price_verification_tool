@@ -3,10 +3,12 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
+import psutil
 from collections import OrderedDict
 from .constants import MODELS_DIR, ALL_FEATURES
 
 MAX_CACHE_SIZE = 20
+MAX_SHAP_THRESHOLD_MB = 900
 
 class ModelInference:
     def __init__(self):
@@ -185,13 +187,14 @@ class ModelInference:
             print(f"Fallback failed for {goods_code}: {fe}")
             return {}
 
-    def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15, include_shap: bool = True) -> dict:
+    def predict(self, input_data: dict, goods_code: str, tolerance: float = 0.15, include_shap: bool = True, shap_threshold_mb: int = MAX_SHAP_THRESHOLD_MB) -> dict:
         """
         Predicts unit price based on input data and calculates feature contributions (SHAP).
         Args:
             input_data (dict): Dictionary containing input features.
             goods_code (str): The HS code of the goods.   
             include_shap (bool): Whether to calculate feature contributions.
+            shap_threshold_mb (int): Memory threshold in MB to skip SHAP calculation if exceeded.
         Returns:
             dict: Contains 'predicted_price', 'lower_bound', 'upper_bound', and optionally 'feature_importance'.
         """
@@ -217,10 +220,23 @@ class ModelInference:
 
         # Calculate SHAP or Fallback
         feature_importance = {}
-        if explainer:
+        
+        if include_shap:
+            try:
+                # Check RSS Memory (Fail-safe)
+                process = psutil.Process(os.getpid())
+                current_mem_mb = process.memory_info().rss // (1024 * 1024)
+                if current_mem_mb >= shap_threshold_mb:
+                    print(f"Memory warning: {current_mem_mb}MB >= {shap_threshold_mb}MB. Skipping SHAP.")
+                    include_shap = False
+            except Exception as e:
+                print(f"Memory check failed: {e}. Defaulting to safe mode (Skipping SHAP).")
+                include_shap = False
+
+        if include_shap and explainer:
             feature_importance = self._get_shap_importance(explainer, input_df, feature_names, preprocessor, goods_code)
         
-        if not feature_importance: # Try fallback if SHAP missed or failed
+        if not feature_importance: # Try fallback if SHAP skipped/missed/failed
              feature_importance = self._get_fallback_importance(pipeline, feature_names, goods_code)
 
         # Calculate price range

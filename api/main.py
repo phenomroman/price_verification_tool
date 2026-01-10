@@ -28,6 +28,7 @@ class DataInput(BaseModel):
     )
     code: str = Field(..., description="The HS code for the goods.", example="52094200")
     tolerance: float = Field(0.15, description="Prediction tolerance.")
+    include_shap: bool = Field(True, description="Whether to include SHAP feature importance analysis.")
 
 class Output(BaseModel):
     result: Dict[str, Any]
@@ -90,7 +91,7 @@ async def predict_price(
     else:
         raise HTTPException(status_code=400, detail="Invalid input format. Must be a list or a dictionary.")
     
-    result = inference_engine.predict(final_input_data, data.code, tolerance=data.tolerance)
+    result = inference_engine.predict(final_input_data, data.code, tolerance=data.tolerance, include_shap=data.include_shap)
     
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
