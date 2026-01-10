@@ -7,8 +7,8 @@ import psutil
 from collections import OrderedDict
 from .constants import MODELS_DIR, ALL_FEATURES
 
-MAX_CACHE_SIZE = 20
-MAX_SHAP_THRESHOLD_MB = 900
+MAX_CACHE_SIZE = int(os.environ.get("MAX_CACHE_SIZE", 20))
+MAX_SHAP_THRESHOLD_MB = int(os.environ.get("MAX_SHAP_THRESHOLD_MB", 900))
 
 class ModelInference:
     def __init__(self):
