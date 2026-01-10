@@ -34,3 +34,7 @@ CURRENCY_OPTIONS = config["CURRENCY_OPTIONS"]
 
 # Incoterm Options
 INCOTERM_OPTIONS = config["INCOTERM_OPTIONS"]
+
+# Goods with insufficient training data
+INSUFFICIENT_DATA_CODES = ['58071000', '96061000']
+

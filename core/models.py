@@ -43,8 +43,11 @@ class ModelInference:
                         break
         return model, preprocessor
 
-    def _load_single_model(self, code, include_shap=True):
-        """Loads a specific model and optionally initializes its SHAP explainer on demand."""
+    def _load_resource(self, code: str, include_shap: bool = True) -> bool:
+        """
+        Loads a specific model resource and optionally its SHAP explainer.
+        Uses LRU eviction to manage memory.
+        """
         if code in self.pipelines:
             # LRU: Move to end to mark as recently used
             self.pipelines.move_to_end(code)
@@ -52,7 +55,7 @@ class ModelInference:
             if code in self.preprocessors: self.preprocessors.move_to_end(code)
             if code in self.feature_names: self.feature_names.move_to_end(code)
 
-            # If already loaded but SHAP is now requested and was previously skipped
+            # Initialize SHAP if requested but not yet available
             if include_shap and code not in self.explainers:
                 return self._init_shap(code)
             return True
@@ -63,15 +66,14 @@ class ModelInference:
         # Eviction logic: Remove oldest if cache is full
         if len(self.pipelines) >= MAX_CACHE_SIZE:
              removed_code, _ = self.pipelines.popitem(last=False)
-             # Clean up other dicts
              self.explainers.pop(removed_code, None)
              self.preprocessors.pop(removed_code, None)
              self.feature_names.pop(removed_code, None)
-             print(f"Evicted model {removed_code} from cache to free memory.")
+             print(f"INFO: Evicted model {removed_code} from cache.")
 
         file_path = os.path.join(MODELS_DIR, f"{code}.pkl")
         try:
-            print(f"Loading model for {code}...")
+            print(f"INFO: Loading model resource for {code}...")
             pipeline = joblib.load(file_path)
             self.pipelines[code] = pipeline
             
@@ -79,7 +81,7 @@ class ModelInference:
             model, preprocessor = self._extract_components(pipeline)
             self.preprocessors[code] = preprocessor
 
-            # Extract feature names
+            # Extract feature names for explainability
             extracted_names = None
             if preprocessor:
                 if hasattr(preprocessor, "get_feature_names_out"):
@@ -91,10 +93,7 @@ class ModelInference:
                 extracted_names = model.feature_names_
 
             if extracted_names is not None:
-                cleaned_names = []
-                for n in extracted_names:
-                    n_str = str(n)
-                    cleaned_names.append(n_str.split("__", 1)[-1] if "__" in n_str else n_str)
+                cleaned_names = [str(n).split("__", 1)[-1] if "__" in str(n) else str(n) for n in extracted_names]
                 self.feature_names[code] = cleaned_names
             else:
                 self.feature_names[code] = ALL_FEATURES
@@ -104,7 +103,7 @@ class ModelInference:
             
             return True
         except Exception as e:
-            print(f"Error loading model {code}: {e}")
+            print(f"ERROR: Failed to load model {code}: {e}")
             return False
 
     def _init_shap(self, code):
@@ -207,7 +206,7 @@ class ModelInference:
         input_array = np.array([row], dtype=object)
         input_df = pd.DataFrame(data=input_array, columns=ALL_FEATURES)
 
-        if not self._load_single_model(goods_code, include_shap=include_shap):
+        if not self._load_resource(goods_code, include_shap=include_shap):
             return {"error": f"No model found for code {goods_code}"}
 
         pipeline = self.pipelines.get(goods_code)
@@ -285,7 +284,7 @@ class ModelInference:
         # Group by goods code for efficiency
         for code, group in df_work.groupby(actual_code_col):
             code_str = str(code)
-            if not self._load_single_model(code_str, include_shap=False):
+            if not self._load_resource(code_str, include_shap=False):
                 continue
 
             pipeline = self.pipelines.get(code_str)

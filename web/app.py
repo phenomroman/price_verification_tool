@@ -18,7 +18,7 @@ if parent_dir not in sys.path:
 from core.models import inference_engine
 # from core.pdf_reports import generate_prediction_pdf
 from core.constants import (
-    GOODS_INFO, COUNTRY_OPTIONS, PORT_OPTIONS, CURRENCY_OPTIONS, INCOTERM_OPTIONS, ALL_FEATURES
+    GOODS_INFO, COUNTRY_OPTIONS, PORT_OPTIONS, CURRENCY_OPTIONS, INCOTERM_OPTIONS, ALL_FEATURES, INSUFFICIENT_DATA_CODES
 )
 
 max_year = datetime.now().year
@@ -196,7 +196,7 @@ def render_results(result, currency, goods_code, goods_description, input_data):
     #     mime="application/pdf"
     # )
     # Warning message for goods with insufficient data
-    if goods_code in ['58071000', '96061000']:
+    if goods_code in INSUFFICIENT_DATA_CODES:
         st.markdown(":red[!!! IMPORTANT !!! The prediction may not be accurate:]")
         st.write(f"Goods '{goods_code}: {goods_description}' did not have sufficient data for training.")
 
