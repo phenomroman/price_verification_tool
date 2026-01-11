@@ -14,7 +14,7 @@ We take the security of our Price Verification Tool seriously. If you have disco
 Please follow these steps to report a vulnerability:
 
 1.  **Do not create a public GitHub issue.** This allows us to address the vulnerability before it can be exploited.
-2.  **Email us directly** at [security@phenomroman.com](mailto:security@phenomroman.com).
+2.  **Email us directly** at [phenomroman@gmail.com](mailto:phenomroman@gmail.com).
 3.  **Provide details.** Please include as much information as possible, such as:
     *   Descriptions of the vulnerability.
     *   Steps to reproduce the issue.

@@ -16,6 +16,8 @@ This project uses various open-source libraries. Below is a summary of the libra
 | **Openpyxl** | MIT | Excel File Handling |
 | **Joblib** | BSD 3-Clause | Model Persistence |
 | **Python-Multipart** | Apache 2.0 | Form Data Parsing |
+| **SHAP** | MIT | Model Explainability |
+| **psutil** | BSD 3-Clause | System Monitoring |
 
 ## Compliance Requirements
 For most of these licenses (MIT, BSD, Apache), the primary requirement is to include the original copyright notice and the license text in any distributions of the software. 

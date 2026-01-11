@@ -27,7 +27,7 @@ gcloud storage cp -r new_models/*.pkl gs://price-verification-models/
 ### 3. Secret Manager
 Sensitive API keys are stored in Secret Manager:
 - **Secret Name**: `api-service-api-keys`
-- **Env Var**: `API_KEYS` (mounted to `api-service`)
+- **Env Var**: `API_KEYS` (mounted to `api-service`, comma-separated string)
 
 ## 🛠️ Deployment Process
 
@@ -53,3 +53,8 @@ To delete old revisions or images:
 # Delete all but latest 5 revisions
 gcloud run revisions list --service [SERVICE_NAME] --region asia-southeast1 ...
 ```
+
+## ⚙️ Memory Management
+The following environment variables can be used to tune performance and memory usage:
+- `MAX_CACHE_SIZE`: Number of models to keep in memory.
+- `MAX_SHAP_THRESHOLD_MB`: RSS memory threshold (MB) above which SHAP analysis is skipped in favor of faster feature importance.
