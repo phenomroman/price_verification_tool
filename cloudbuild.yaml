@@ -49,7 +49,9 @@ steps:
       - 'asia-southeast1'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated' # Adjust as needed for security
+      - '--allow-unauthenticated' # Gateway needs this to reach backend
+      - '--ingress'
+      - 'internal' # Only allows traffic from Gateway/Internal networks
       - '--set-secrets'
       - 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
       # Mount models (ensure SA has permissions)
@@ -77,6 +79,11 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--session-affinity'
+      - '--set-env-vars'
+      - 'API_URL=https://api-service-1019385345956.asia-southeast1.run.app'
+      - 'EXTERNAL_API_URL=https://price-api-gateway-d0arpqxw.an.gateway.dev'
+      - '--set-secrets'
+      - 'API_KEY=api-gateway-key:latest' 
       # Mount models (ensure SA has permissions)
       - '--add-volume=name=models,type=cloud-storage,bucket=price-verification-models,readonly=true'
       - '--add-volume-mount=volume=models,mount-path=/app/price_models'
