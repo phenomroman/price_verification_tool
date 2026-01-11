@@ -80,8 +80,7 @@ steps:
       - '--allow-unauthenticated'
       - '--session-affinity'
       - '--set-env-vars'
-      - 'API_URL=https://api-service-1019385345956.asia-southeast1.run.app'
-      - 'EXTERNAL_API_URL=https://price-api-gateway-d0arpqxw.an.gateway.dev'
+      - 'API_URL=https://api-service-1019385345956.asia-southeast1.run.app,EXTERNAL_API_URL=https://price-api-gateway-d0arpqxw.an.gateway.dev'
       - '--set-secrets'
       - 'API_KEY=api-gateway-key:latest' 
       # Mount models (ensure SA has permissions)
