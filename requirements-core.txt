@@ -8,3 +8,4 @@ shap
 plotly
 fpdf2
 matplotlib
+psutil
