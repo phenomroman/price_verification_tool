@@ -87,7 +87,7 @@ def get_user_inputs():
 
 def run_prediction(input_data, goods_code, tolerance):
     """Handles API call logic with fallback to local inference."""
-    api_url = os.environ.get('EXTERNAL_API_URL') or os.environ.get('API_URL') or "http://localhost:8000"
+    api_url = os.environ.get('EXTERNAL_API_URL') or os.environ.get('API_URL') or "http://localhost:8080"
     result = None
     
     # Try API first if configured
@@ -104,19 +104,24 @@ def run_prediction(input_data, goods_code, tolerance):
                 "tolerance": tolerance
             }
             
-            response = requests.post(f"{api_url}/predict", json=payload, headers=headers, timeout=5)
+            request_url = f"{api_url}/predict"
+            # If using API Gateway, the key might be required in the query string
+            if "gateway.dev" in api_url:
+                request_url = f"{request_url}?key={api_key}"
+
+            response = requests.post(request_url, json=payload, headers=headers, timeout=10)
             
             if response.status_code == 200:
                 result = response.json().get("result")
-            elif response.status_code == 403:
-                st.toast("API Authentication Failed. Falling back to local model.", icon="🚫")
+            elif response.status_code in [401, 403]:
+                st.toast("API Authentication Failed (Gateway). Falling back to internal model.", icon="🚫")
             else:
-                st.toast(f"API Error ({response.status_code}). Falling back to local model.", icon="⚠️")
+                st.toast(f"API Error ({response.status_code}). Falling back to internal model.", icon="⚠️")
         except Exception as e:
-            st.toast(f"API unreachable. Falling back to local model.", icon="⚠️")
+            st.toast(f"API unreachable. Falling back to internal model.", icon="⚠️")
             print(f"API Error: {e}")
             
-    # Fallback to local inference
+    # Fallback to internal inference
     if result is None:
         result = inference_engine.predict(input_data, goods_code, tolerance=tolerance, include_shap=True, shap_threshold_mb=400)
     
@@ -205,7 +210,7 @@ def render_batch_processing():
     st.header("📂 Batch Data Processing")
     st.write("Upload an Excel file containing invoice details to calculate predicted prices for all rows.")
     
-    st.info("The Excel file must contain columns matching the feature names: **YEAR, QUANTITY, TENOR OF PAYMENT, FREIGHT CHARGES, EXPORTER, EXPORTER'S COUNTRY, IMPORTER, COUNTRY_OF_ORIGIN, CURRENCY, TRADE-TERM, SHIPMENT FROM, SHIPMENT TO,** and **HSCODE**, **TOLERANCE**.")
+    st.info("The Excel file must contain columns: **YEAR, QUANTITY, TENOR OF PAYMENT, FREIGHT CHARGES, EXPORTER, EXPORTER'S COUNTRY, IMPORTER, COUNTRY_OF_ORIGIN, CURRENCY, TRADE-TERM, SHIPMENT FROM, SHIPMENT TO, HSCODE, and TOLERANCE (optional)**.")
     
     uploaded_file = st.file_uploader("Choose an Excel file", type=['xlsx'])
     

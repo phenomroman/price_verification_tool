@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Union
 from core.models import inference_engine
 from core.constants import ALL_FEATURES
-from api.security import get_api_key
+# from api.security import get_api_key
 
 app = FastAPI(title='Price Verification API')
 
@@ -39,7 +39,7 @@ def read_root():
 
 @app.post('/predict', response_model=Output)
 async def predict_price(
-    api_key: str = Depends(get_api_key),
+    # api_key: str = Depends(get_api_key),
     data: DataInput = Body(
         ...,
         openapi_examples={
@@ -101,8 +101,8 @@ async def predict_price(
 @app.post('/predict/excel')
 async def predict_excel(
     file: UploadFile = File(...), 
-    tolerance: float = 0.15,
-    api_key: str = Depends(get_api_key)
+    tolerance: float = 0.15
+    # , api_key: str = Depends(get_api_key)
 ):
     """
     Upload an Excel file to get batch predictions.
@@ -142,4 +142,4 @@ async def predict_excel(
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8080)
