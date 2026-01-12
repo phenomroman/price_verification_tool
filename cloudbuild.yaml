@@ -49,9 +49,9 @@ steps:
       - 'asia-southeast1'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated' # Gateway needs this to reach backend
+      - '--no-allow-unauthenticated' # Secure by default, requires IAM roles
       - '--ingress'
-      - 'internal' # Only allows traffic from Gateway/Internal networks
+      - 'all' # Allows Gateway (external to Cloud Run) to reach service
       - '--set-secrets'
       - 'API_KEYS=api-service-api-keys:latest' # Maps cloud secret to ENV var
       # Mount models (ensure SA has permissions)

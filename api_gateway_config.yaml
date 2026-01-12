@@ -22,7 +22,7 @@ paths:
       summary: Predict Price
       operationId: predict_price
       x-google-backend:
-        address: https://api-service-1019385345956.asia-southeast1.run.app
+        address: https://api-service-1019385345956.asia-southeast1.run.app/predict
       security:
         - api_key: []
       responses:
@@ -33,7 +33,7 @@ paths:
       summary: Predict Price (Excel)
       operationId: predict_excel
       x-google-backend:
-        address: https://api-service-1019385345956.asia-southeast1.run.app
+        address: https://api-service-1019385345956.asia-southeast1.run.app/predict/excel
       security:
         - api_key: []
       responses:
