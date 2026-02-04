@@ -1,4 +1,4 @@
 -r ../requirements-core.txt
 streamlit
 requests
-PIL
+Pillow
