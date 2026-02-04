@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
+from PIL import Image
 # import zoneinfo
 
 # Ensure the parent directory is in the path to import from core
@@ -21,6 +22,9 @@ from core.constants import (
     GOODS_INFO, COUNTRY_OPTIONS, PORT_OPTIONS, CURRENCY_OPTIONS, INCOTERM_OPTIONS, ALL_FEATURES, INSUFFICIENT_DATA_CODES
 )
 
+# Load the app logo
+app_logo = Image.open("./assets/price-app-logo.png")
+# Set maximum and minimum years in Year selection
 max_year = datetime.now().year
 min_year = max_year - 3
 
@@ -345,10 +349,10 @@ def inject_custom_css():
     )
 
 def main():
-    st.set_page_config(page_title="Price Verification Tool 🏷️", layout="centered")
+    st.set_page_config(page_title="Price Verification Tool 🏷️", page_icon=app_logo, layout="centered")
     inject_custom_css()
-
-    st.title("💰 Unit Price Assessment")
+    st.logo(app_logo, size='large')
+    st.title("💰 Unit Price Assessment") 
     
     #tab_single, tab_batch, tab_market = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing", "📈 Market Trends and Elasticity"])
     tab_single, tab_batch = st.tabs(["🎯 Single Data Assessment", "📂 Batch Data Processing"])
