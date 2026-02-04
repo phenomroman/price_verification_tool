@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r web/requirements.txt
 COPY core /app/core
 COPY web /app/web
 COPY __init__.py /app/
+COPY assets /app/assets
 
 # Make port 8501 available to the world outside this container
 EXPOSE 8501
